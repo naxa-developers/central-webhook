@@ -144,7 +144,7 @@ func main() {
 	log := getDefaultLogger(slog.LevelInfo)
 
 	var dbUri string
-	flag.StringVar(&dbUri, "dbhost", "", "DB host (postgresql://{user}:{password}@{hostname}/{db}?sslmode=disable)")
+	flag.StringVar(&dbUri, "db", "", "DB host (postgresql://{user}:{password}@{hostname}/{db}?sslmode=disable)")
 
 	var webhookUri string
 	flag.StringVar(&webhookUri, "webhook", "", "Webhook URL to call")
