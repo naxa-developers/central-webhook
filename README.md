@@ -15,6 +15,11 @@ odkhook \
     -webhook 'https://your.domain.com/some/webhook'
 ```
 
+> [!TIP]
+> By default both Entity editing and new submissions trigger the webhook.
+>
+> Use the -trigger flag to modify this behaviour.
+
 From code:
 
 ```go
