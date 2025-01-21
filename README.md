@@ -11,7 +11,7 @@ From command line:
 
 ```bash
 odkhook \
-    -dbhost 'postgresql://{user}:{password}@{hostname}/{db}?sslmode=disable' \
+    -db 'postgresql://{user}:{password}@{hostname}/{db}?sslmode=disable' \
     -webhook 'https://your.domain.com/some/webhook'
 ```
 
