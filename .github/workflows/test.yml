@@ -14,7 +14,7 @@ jobs:
     uses: hotosm/gh-workflows/.github/workflows/test_compose.yml@2.0.5
     with:
       image_name: ghcr.io/${{ github.repository }}
-      build_target: release
+      build_target: build
       tag_override: ci
       compose_file: compose.yml
       compose_service: odkhook
