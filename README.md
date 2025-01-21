@@ -7,10 +7,15 @@ Call a remote API on ODK Central database events:
 
 ## Usage
 
-From command line:
+### Binary
+
+Download the binary for your platform from the
+[releases](https://github.com/hotosm/odk-webhook/releases) page.
+
+Then run with:
 
 ```bash
-odkhook \
+./odkhook \
     -db 'postgresql://{user}:{password}@{hostname}/{db}?sslmode=disable' \
     -webhook 'https://your.domain.com/some/webhook'
 ```
@@ -20,7 +25,20 @@ odkhook \
 >
 > Use the -trigger flag to modify this behaviour.
 
-From code:
+### Docker
+
+```bash
+docker run -d ghcr.io/hotosm/odk-webhook:latest \
+    -db 'postgresql://{user}:{password}@{hostname}/{db}?sslmode=disable' \
+    -webhook 'https://your.domain.com/some/webhook'
+```
+
+> [!NOTE]
+> Alternatively, add to your docker compose stack.
+
+### Code
+
+Usage via the code / API:
 
 ```go
 package main
