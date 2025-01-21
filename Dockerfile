@@ -1,10 +1,13 @@
+FROM golang:1.23 AS base
+
+
 # Build statically compiled binary
-FROM golang:1.23 AS build
+FROM base AS build
 WORKDIR /app
 COPY go.mod go.sum ./
 RUN go mod download
 COPY . .
-RUN CGO_ENABLED=0 GOOS=linux go build -o /odkhook
+RUN CGO_ENABLED=0 GOOS=linux go build -o /app/odkhook
 
 
 # Run the tests in the container
@@ -12,9 +15,17 @@ FROM build AS run-test-stage
 RUN go test -v ./...
 
 
+# Add a non-root user to passwd file
+FROM base AS useradd
+RUN groupadd -g 1000 nonroot
+RUN useradd -u 1000 nonroot -g 1000
+
+
 # Deploy the application binary into sratch image
-FROM scratch as release
-WORKDIR /
-COPY --from=build /odkhook /odkhook
+FROM scratch AS release
+WORKDIR /app
+COPY --from=build /app/odkhook /app/odkhook
+COPY --from=useradd /etc/group /etc/group
+COPY --from=useradd /etc/passwd /etc/passwd
 USER nonroot:nonroot
-ENTRYPOINT ["/odkhook"]
+ENTRYPOINT ["/app/odkhook"]
