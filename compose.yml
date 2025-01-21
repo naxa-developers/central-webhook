@@ -1,0 +1,45 @@
+# This file is used for running tests with an attached database
+
+networks:
+  net:
+    name: fmtm-splitter
+
+services:
+  odkhook:
+    image: "ghcr.io/hotosm/odk-webhook:${TAG_OVERRIDE:-ci}"
+    build:
+      target: build
+    container_name: odkhook
+    volumes:
+      # Mount local files
+      - ./go.mod:/app/go.mod:ro
+      - ./go.sum:/app/go.sum:ro
+      - ./main.go:/app/main.go:ro
+      - ./db:/app/db:ro
+      - ./webhook:/app/webhook:ro
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - net
+    restart: "no"
+    entrypoint: go test -v ./...
+
+  db:
+    image: "postgis/postgis:17-3.5-alpine"
+    container_name: odkhook-db
+    environment:
+      - POSTGRES_USER=odk
+      - POSTGRES_PASSWORD=odk
+      - POSTGRES_DB=odkhook
+    ports:
+      - "5439:5432"
+    networks:
+      - net
+    restart: "unless-stopped"
+    healthcheck:
+      test: pg_isready -U odk -d odkhook
+      start_period: 5s
+      interval: 10s
+      timeout: 5s
+      retries: 3

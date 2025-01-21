@@ -18,8 +18,7 @@ import (
 // -e POSTGRES_PASSWORD=postgres postgres
 
 func TestNotifier(t *testing.T) {
-	// TODO this should be a local db in a compose stack
-	dbUri := "postgresql://odk:odk@host.docker.internal:5434/odk?sslmode=disable"
+	dbUri := "postgresql://odk:odk@db:5432/odkhook?sslmode=disable"
 
 	is := is.New(t)
 	log := slog.New(slog.NewJSONHandler(os.Stdout, nil))

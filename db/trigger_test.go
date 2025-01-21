@@ -19,8 +19,7 @@ import (
 // -e POSTGRES_PASSWORD=postgres postgres
 
 func TestTrigger(t *testing.T) {
-	// TODO this should be a local db in a compose stack
-	dbUri := "postgresql://odk:odk@host.docker.internal:5434/odk?sslmode=disable"
+	dbUri := "postgresql://odk:odk@db:5432/odkhook?sslmode=disable"
 
 	is := is.New(t)
 	log := slog.New(slog.NewJSONHandler(os.Stdout, nil))
@@ -104,9 +103,8 @@ func TestTrigger(t *testing.T) {
 	is.Equal(details["var1"], "test") // Ensure var1 has the correct value
 
 	// Cleanup
+	conn.Exec(ctx, `DROP TABLE IF EXISTS audits_test;`)
 	cancel()
-	// FIXME this doesn't actually drop the test table
-	defer conn.Exec(ctx, `DROP TABLE IF EXISTS audits_test;`)
 	sub.Unlisten(ctx) // uses background ctx anyway
 	listener.Close(ctx)
 	wg.Wait()
