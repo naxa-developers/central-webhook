@@ -1,9 +1,0 @@
-https://github.com/tilezen/go-tilepacks/blob/master/cmd/build/main.go#L161
-
-https://github.com/minio/minio-go
-
-https://github.com/protomaps/go-pmtiles/blob/main/pmtiles/convert.go#L226
-
-Example HTTP:
-    https://github.com/benbjohnson/wtf/tree/main
-    https://grafana.com/blog/2024/02/09/how-i-write-http-services-in-go-after-13-years/
