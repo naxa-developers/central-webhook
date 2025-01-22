@@ -10,21 +10,25 @@ import (
 	"github.com/matryer/is"
 )
 
-// NB: these tests assume you have a postgres server listening on localhost:5432
-// with username postgres and password postgres. You can trivially set this up
-// with Docker with the following:
+// Note: these tests assume you have a postgres server listening on db:5432
+// with username odk and password odk.
 //
-// docker run --rm --name postgres -p 5432:5432 \
-// -e POSTGRES_PASSWORD=postgres postgres
+// The easiest way to ensure this is to run the tests with docker compose:
+// docker compose run --rm odkhook
 
 func TestNotifier(t *testing.T) {
-	dbUri := "postgresql://odk:odk@db:5432/odkhook?sslmode=disable"
+	dbUri := os.Getenv("ODK_WEBHOOK_DB_URI")
+	if len(dbUri) == 0 {
+		// Default
+		dbUri = "postgresql://odk:odk@db:5432/odkhook?sslmode=disable"
+	}
 
 	is := is.New(t)
 	log := slog.New(slog.NewJSONHandler(os.Stdout, nil))
 	ctx := context.Background()
 	ctx, cancel := context.WithCancel(ctx)
 	wg := sync.WaitGroup{}
+
 	pool, err := InitPool(ctx, log, dbUri)
 	is.NoErr(err)
 

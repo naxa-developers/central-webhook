@@ -1,4 +1,4 @@
-// Wrapper for the tool functionality
+// Wrapper for the main tool functionality
 
 package main
 
@@ -8,12 +8,15 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
+	"os/signal"
 	"path/filepath"
 	"strings"
+	"syscall"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/hotosm/odk-webhook/db"
+	"github.com/hotosm/odk-webhook/parser"
 	"github.com/hotosm/odk-webhook/webhook"
 )
 
@@ -34,17 +37,11 @@ func getDefaultLogger(lvl slog.Level) *slog.Logger {
 	}))
 }
 
-// triggerableActions options:
-//   - entity.update.version  (entity edit)
-//   - submission.create  (submission creation)
-//
-// See ODK docs for all options
 func SetupWebhook(
 	log *slog.Logger,
 	ctx context.Context,
 	dbPool *pgxpool.Pool,
-	webhookUrl string,
-	triggerableActions map[string]bool,
+	entityUrl, submissionUrl string,
 ) error {
 	// setup the listener
 	listener := db.NewListener(dbPool)
@@ -54,7 +51,7 @@ func SetupWebhook(
 	}
 
 	// init the trigger function
-	db.CreateTrigger(ctx, dbPool, "odk-events")
+	db.CreateTrigger(ctx, dbPool, "audits")
 
 	// setup the notifier
 	notifier := db.NewNotifier(log, listener)
@@ -69,26 +66,24 @@ func SetupWebhook(
 		<-sub.EstablishedC()
 		for {
 			select {
-
 			case <-ctx.Done():
 				sub.Unlisten(ctx)
 				log.Info("done listening for notifications")
 				return
 
 			case data := <-sub.NotificationC():
-				dataString := string(data)
-				log.Debug("got notification: %s \n", "data", dataString)
+				eventData := string(data)
+				log.Debug("got notification", "data", eventData)
 
-				parsedData, err := webhook.ParseEventJson(log, ctx, []byte(data))
+				parsedData, err := parser.ParseEventJson(log, ctx, []byte(eventData))
 				if err != nil {
 					log.Error("Failed to parse notification", "error", err)
 					continue // Skip processing this notification
 				}
 
-				if triggerableActions[parsedData.Action] {
-					webhook.SendRequest(log, ctx, webhookUrl, *parsedData)
-				} else {
-					log.Debug("Event type is not set to trigger webhook", "type", parsedData.Action)
+				if parsedData != nil {
+					// Only send the request for correctly parsed (supported) events
+					webhook.SendRequest(log, ctx, entityUrl, *parsedData)
 				}
 			}
 		}
@@ -100,30 +95,22 @@ func SetupWebhook(
 	// 	sub.Unlisten(ctx)
 	// }()
 
-	select {}
-}
+	stopCtx, cancel := context.WithCancel(ctx)
+	defer cancel()
 
-func parseTriggerFlag(trigger string) (map[string]bool, error) {
-	trigger = strings.ToLower(strings.TrimSpace(trigger))
-	triggerableActions := make(map[string]bool)
+	// Listen for termination signals (e.g., SIGINT/SIGTERM)
+	go func() {
+		c := make(chan os.Signal, 1)
+		signal.Notify(c, os.Interrupt, syscall.SIGTERM)
+		<-c
+		log.Info("Received shutdown signal")
+		cancel()
+	}()
 
-	switch trigger {
-	// case "all":
-	// 	triggerableActions["entity.update.version"] = true
-	// 	triggerableActions["submission.create"] = true
-	// 	// TODO add more options here
-	case "entities":
-		triggerableActions["entity.update.version"] = true
-	case "submissions":
-		triggerableActions["submission.create"] = true
-	case "submissions,entities", "entities,submissions":
-		triggerableActions["entity.update.version"] = true
-		triggerableActions["submission.create"] = true
-	default:
-		return nil, fmt.Errorf("invalid trigger value: %s", trigger)
-	}
+	<-stopCtx.Done()
+	log.Info("Application shutting down")
 
-	return triggerableActions, nil
+	return nil
 }
 
 func printStartupMsg() {
@@ -141,33 +128,51 @@ func printStartupMsg() {
 
 func main() {
 	ctx := context.Background()
-	log := getDefaultLogger(slog.LevelInfo)
+
+	// Read environment variables
+	defaultDbUri := os.Getenv("ODK_WEBHOOK_DB_URI")
+	defaultEntityUrl := os.Getenv("ODK_WEBHOOK_ENTITY_URL")
+	defaultSubmissionUrl := os.Getenv("ODK_WEBHOOK_SUBMISSION_URL")
+	defaultLogLevel := os.Getenv("ODK_WEBHOOK_LOG_LEVEL")
 
 	var dbUri string
-	flag.StringVar(&dbUri, "db", "", "DB host (postgresql://{user}:{password}@{hostname}/{db}?sslmode=disable)")
+	flag.StringVar(&dbUri, "db", defaultDbUri, "DB host (postgresql://{user}:{password}@{hostname}/{db}?sslmode=disable)")
 
-	var webhookUri string
-	flag.StringVar(&webhookUri, "webhook", "", "Webhook URL to call")
+	var entityUrl string
+	flag.StringVar(&entityUrl, "entityUrl", defaultEntityUrl, "Webhook URL for entity events")
 
-	var trigger string
-	flag.StringVar(&trigger, "trigger", "submissions,entities", "Trigger actions (submissions, entities, or 'submissions,entities' for both)")
+	var submissionUrl string
+	flag.StringVar(&submissionUrl, "submissionUrl", defaultSubmissionUrl, "Webhook URL for submission events")
+
+	var debug bool
+	flag.BoolVar(&debug, "debug", false, "Enable debug logging")
 
 	flag.Parse()
 
-	if dbUri == "" || webhookUri == "" {
-		fmt.Fprintf(os.Stderr, "missing required flags\n")
+	// Set logging level
+	var logLevel slog.Level
+	if debug {
+		logLevel = slog.LevelDebug
+	} else if strings.ToLower(defaultLogLevel) == "debug" {
+		logLevel = slog.LevelDebug
+	} else {
+		logLevel = slog.LevelInfo
+	}
+	log := getDefaultLogger(logLevel)
+
+	if dbUri == "" {
+		fmt.Fprintf(os.Stderr, "DB URI is required\n")
 		flag.PrintDefaults()
 		os.Exit(1)
-		return
 	}
-
-	triggerableActions, err := parseTriggerFlag(trigger)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "error parsing trigger flag: %v\n", err)
+	
+	if entityUrl == "" && submissionUrl == "" {
+		fmt.Fprintf(os.Stderr, "At least one of entityUrl or submissionUrl is required\n")
+		flag.PrintDefaults()
 		os.Exit(1)
 	}
 
-	// get a connection pool
+	// Get a connection pool
 	dbPool, err := db.InitPool(ctx, log, dbUri)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "could not connect to database: %v", err)
@@ -175,7 +180,7 @@ func main() {
 	}
 
 	printStartupMsg()
-	err = SetupWebhook(log, ctx, dbPool, webhookUri, triggerableActions)
+	err = SetupWebhook(log, ctx, dbPool, entityUrl, submissionUrl)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "error setting up webhook: %v", err)
 		os.Exit(1)

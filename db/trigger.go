@@ -8,28 +8,68 @@ import (
 )
 
 // Example parsed JSON
-// {"action":"entity.update.version","actorId":1,"details":{"var1":"test"},"dml_action":"INSERT"}}
+// {"action":"entity.update.version","actorId":1,"details":{"entityDefId":1001,...},"dml_action":"INSERT"}}
 
 func CreateTrigger(ctx context.Context, dbPool *pgxpool.Pool, tableName string) error {
 	// This trigger runs on the `audits` table by default, and creates a new event
 	// in the odk-events queue when a new event is created in the table
 
 	if tableName == "" {
-		tableName = "audits" // default table
+		// default table (this is configurable for easier tests mainly)
+		tableName = "audits"
 	}
 
 	// SQL for creating the function
 	createFunctionSQL := `
 		CREATE OR REPLACE FUNCTION new_audit_log() RETURNS trigger AS
 		$$
-			DECLARE
-				js jsonb;
-			BEGIN
-				SELECT to_jsonb(NEW.*) INTO js;
-				js := jsonb_set(js, '{dml_action}', to_jsonb(TG_OP));
-				PERFORM pg_notify('odk-events', js::text);
-				RETURN NEW;
-			END;
+		DECLARE
+			js jsonb;
+			action_type text;
+			result_data jsonb;
+		BEGIN
+			-- Serialize the NEW row into JSONB
+			SELECT to_jsonb(NEW.*) INTO js;
+
+			-- Add the DML action (INSERT/UPDATE)
+			js := jsonb_set(js, '{dml_action}', to_jsonb(TG_OP));
+
+			-- Extract the action type from the NEW row
+			action_type := NEW.action;
+
+			-- Handle different action types with a CASE statement
+			CASE action_type
+				WHEN 'entity.update.version' THEN
+					SELECT entity_defs.data
+					INTO result_data
+					FROM entity_defs
+					WHERE entity_defs.id = (NEW.details->>'entityDefId')::int;
+
+					-- Merge the additional data into the original JSON
+					js := jsonb_set(js, '{data}', result_data, true);
+
+					-- Notify the odk-events queue
+					PERFORM pg_notify('odk-events', js::text);
+
+				WHEN 'submission.create' THEN
+					SELECT jsonb_build_object('xml', submission_defs.xml)
+					INTO result_data
+					FROM submission_defs
+					WHERE submission_defs.id = (NEW.details->>'submissionDefId')::int;
+
+					-- Merge the additional data into the original JSON
+					js := jsonb_set(js, '{data}', result_data, true);
+
+					-- Notify the odk-events queue
+					PERFORM pg_notify('odk-events', js::text);
+
+				ELSE
+					-- Skip pg_notify for unsupported actions & insert as normal
+					RETURN NEW;
+			END CASE;
+
+			RETURN NEW;
+		END;
 		$$ LANGUAGE 'plpgsql';
 	`
 

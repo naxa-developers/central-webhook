@@ -7,6 +7,9 @@ Call a remote API on ODK Central database events:
 
 ## Usage
 
+The `odkhook` tool is a service that runs continually, monitoring the
+ODK Central database for updates and triggering the webhook as appropriate.
+
 ### Binary
 
 Download the binary for your platform from the
@@ -17,24 +20,24 @@ Then run with:
 ```bash
 ./odkhook \
     -db 'postgresql://{user}:{password}@{hostname}/{db}?sslmode=disable' \
-    -webhook 'https://your.domain.com/some/webhook'
+    -entityUrl 'https://your.domain.com/some/webhook' \
+    -submissionUrl 'https://your.domain.com/some/webhook'
 ```
 
 > [!TIP]
-> By default both Entity editing and new submissions trigger the webhook.
->
-> Use the -trigger flag to modify this behaviour.
+> It's possible to specify a webhook for only Entities or Submissions, or both.
 
 ### Docker
 
 ```bash
 docker run -d ghcr.io/hotosm/odk-webhook:latest \
     -db 'postgresql://{user}:{password}@{hostname}/{db}?sslmode=disable' \
-    -webhook 'https://your.domain.com/some/webhook'
+    -entityUrl 'https://your.domain.com/some/webhook' \
+    -submissionUrl 'https://your.domain.com/some/webhook'
 ```
 
 > [!NOTE]
-> Alternatively, add to your docker compose stack.
+> Alternatively, add the service to your docker compose stack.
 
 ### Code
 
@@ -64,13 +67,14 @@ err = SetupWebhook(
     log,
     ctx,
     dbPool,
-    "https://your.domain.com/some/webhook",
-    map[string]bool{
-        "entity.update.version": true,
-        "submission.create":     true,
-    },
+    "https://your.domain.com/some/entity/webhook",
+    "https://your.domain.com/some/submission/webhook",
 )
 if err != nil {
     fmt.Fprintf(os.Stderr, "error setting up webhook: %v", err)
 }
 ```
+
+> [!NOTE]
+> To not provide a webhook for either entities or submissions,
+> pass `nil` instead.
