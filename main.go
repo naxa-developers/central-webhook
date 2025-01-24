@@ -77,13 +77,19 @@ func SetupWebhook(
 
 				parsedData, err := parser.ParseEventJson(log, ctx, []byte(eventData))
 				if err != nil {
-					log.Error("Failed to parse notification", "error", err)
+					log.Error("failed to parse notification", "error", err)
 					continue // Skip processing this notification
 				}
 
+				// Only send the request for correctly parsed (supported) events
 				if parsedData != nil {
-					// Only send the request for correctly parsed (supported) events
-					webhook.SendRequest(log, ctx, entityUrl, *parsedData)
+					if parsedData.Type == "entity.update.version" && entityUrl != "" {
+						webhook.SendRequest(log, ctx, entityUrl, *parsedData)
+					} else if parsedData.Type == "submission.create" && submissionUrl != "" {
+						webhook.SendRequest(log, ctx, submissionUrl, *parsedData)
+					} else {
+						log.Warn("unknown event type or no webhook URL provided", "eventType", parsedData.Type)
+					}
 				}
 			}
 		}
@@ -103,12 +109,12 @@ func SetupWebhook(
 		c := make(chan os.Signal, 1)
 		signal.Notify(c, os.Interrupt, syscall.SIGTERM)
 		<-c
-		log.Info("Received shutdown signal")
+		log.Info("received shutdown signal")
 		cancel()
 	}()
 
 	<-stopCtx.Done()
-	log.Info("Application shutting down")
+	log.Info("application shutting down")
 
 	return nil
 }

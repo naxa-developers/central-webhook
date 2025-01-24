@@ -22,14 +22,14 @@ func SendRequest(
 	// Marshal the payload to JSON
 	marshaledPayload, err := json.Marshal(eventJson)
 	if err != nil {
-		log.Error("Failed to marshal payload to JSON", "error", err)
+		log.Error("failed to marshal payload to JSON", "error", err)
 		return
 	}
 
 	// Create the HTTP request
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, apiEndpoint, bytes.NewBuffer(marshaledPayload))
 	if err != nil {
-		log.Error("Failed to create HTTP request", "error", err)
+		log.Error("failed to create HTTP request", "error", err)
 		return
 	}
 	req.Header.Set("Content-Type", "application/json")
@@ -38,15 +38,15 @@ func SendRequest(
 	client := &http.Client{Timeout: 10 * time.Second}
 	resp, err := client.Do(req)
 	if err != nil {
-		log.Error("Failed to send HTTP request", "error", err)
+		log.Error("failed to send HTTP request", "error", err)
 		return
 	}
 	defer resp.Body.Close()
 
 	// Check the response status
 	if resp.StatusCode >= http.StatusOK && resp.StatusCode < http.StatusMultipleChoices {
-		log.Info("Webhook called successfully", "status", resp.StatusCode)
+		log.Info("webhook called successfully", "status", resp.StatusCode, "endpoint", apiEndpoint)
 	} else {
-		log.Error("Failed to call webhook", "status", resp.StatusCode)
+		log.Error("failed to call webhook", "status", resp.StatusCode, "endpoint", apiEndpoint)
 	}
 }

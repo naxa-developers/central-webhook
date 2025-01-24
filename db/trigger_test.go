@@ -118,7 +118,7 @@ func TestEntityTrigger(t *testing.T) {
 		<-sub.EstablishedC()
 		msg := <-sub.NotificationC() // Get the notification
 
-		log.Info("Notification received", "raw", msg)
+		log.Info("notification received", "raw", msg)
 
 		out <- string(msg) // Send it to the output channel
 		close(out)
@@ -130,7 +130,7 @@ func TestEntityTrigger(t *testing.T) {
 	for msg := range out {
 		err := json.Unmarshal([]byte(msg), &notification)
 		is.NoErr(err) // Ensure the JSON payload is valid
-		log.Info("Parsed notification", "notification", notification)
+		log.Info("parsed notification", "notification", notification)
 	}
 
 	// Validate the JSON content
@@ -262,7 +262,7 @@ func TestSubmissionTrigger(t *testing.T) {
 		<-sub.EstablishedC()
 		msg := <-sub.NotificationC() // Get the notification
 
-		log.Info("Notification received", "raw", msg)
+		log.Info("notification received", "raw", msg)
 
 		out <- string(msg) // Send it to the output channel
 		close(out)
@@ -274,7 +274,7 @@ func TestSubmissionTrigger(t *testing.T) {
 	for msg := range out {
 		err := json.Unmarshal([]byte(msg), &notification)
 		is.NoErr(err) // Ensure the JSON payload is valid
-		log.Info("Parsed notification", "notification", notification)
+		log.Info("parsed notification", "notification", notification)
 	}
 
 	// Validate the JSON content
@@ -365,7 +365,7 @@ func TestNoTrigger(t *testing.T) {
 		<-sub.EstablishedC()
 		msg := <-sub.NotificationC() // Get the notification
 
-		log.Info("Notification received", "raw", msg)
+		log.Info("notification received", "raw", msg)
 
 		out <- string(msg) // Send it to the output channel
 		close(out)
@@ -375,10 +375,10 @@ func TestNoTrigger(t *testing.T) {
 	select {
 	case msg := <-out:
 		// If a message was received, we failed the test since no event should be fired
-		t.Fatalf("Unexpected message received: %s", msg)
+		t.Fatalf("pnexpected message received: %s", msg)
 	case <-time.After(1 * time.Second):
 		// No message should have been received within the timeout
-		log.Info("No event triggered for invalid event type")
+		log.Info("no event triggered for invalid event type")
 	}
 
 	// Cleanup

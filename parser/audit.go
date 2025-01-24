@@ -27,7 +27,7 @@ type OdkNewSubmissionDetails struct {
 
 // OdkAuditLog represents the main structure for the audit log (returned by pg_notify)
 type OdkAuditLog struct {
-	Notes   *string     `json:"notes"`   // Pointer to handle null values
+	Notes   *string     `json:"notes"` // Pointer to handle null values
 	Action  string      `json:"action"`
 	ActeeID string      `json:"acteeId"` // Use string for UUID
 	ActorID int         `json:"actorId"` // Integer for the actor ID
@@ -38,6 +38,7 @@ type OdkAuditLog struct {
 
 // ProcessedEvent represents the final parsed event structure (to send to the webhook API)
 type ProcessedEvent struct {
+	Type string      `json:"type"` // The event type, entity update or new submission
 	ID   string      `json:"id"`   // Entity UUID or Submission InstanceID
 	Data interface{} `json:"data"` // The actual entity data or wrapped submission XML
 }
@@ -50,10 +51,10 @@ func ParseJsonString(log *slog.Logger, data []byte) (*OdkAuditLog, error) {
 
 	var parsedData OdkAuditLog
 	if err := json.Unmarshal(data, &parsedData); err != nil {
-		log.Error("Failed to parse JSON data", "error", err, "data", string(data))
+		log.Error("failed to parse JSON data", "error", err, "data", string(data))
 		return nil, err
 	}
-	log.Debug("Parsed notification data", "data", parsedData)
+	log.Debug("parsed notification data", "data", parsedData)
 	return &parsedData, nil
 }
 
@@ -73,35 +74,37 @@ func ParseEventJson(log *slog.Logger, ctx context.Context, data []byte) (*Proces
 	case "entity.update.version":
 		var entityDetails OdkEntityDetails
 		if err := parseDetails(rawLog.Details, &entityDetails); err != nil {
-			log.Error("Failed to parse entity.update.version details", "error", err)
+			log.Error("failed to parse entity.update.version details", "error", err)
 			return nil, err
 		}
+		processedEvent.Type = "entity.update.version"
 		processedEvent.ID = entityDetails.Entity.Uuid
 		processedEvent.Data = rawLog.Data
 
 	case "submission.create":
 		var submissionDetails OdkNewSubmissionDetails
 		if err := parseDetails(rawLog.Details, &submissionDetails); err != nil {
-			log.Error("Failed to parse submission.create details", "error", err)
+			log.Error("failed to parse submission.create details", "error", err)
 			return nil, err
 		}
+		processedEvent.Type = "submission.create"
 		processedEvent.ID = submissionDetails.InstanceId
 
 		// Parse the raw XML data
 		rawData, ok := rawLog.Data.(map[string]interface{})
 		if !ok {
-			log.Error("Invalid data type for submission.create", "data", rawLog.Data)
+			log.Error("invalid data type for submission.create", "data", rawLog.Data)
 			return nil, errors.New("invalid data type for submission.create")
 		}
 		processedEvent.Data = rawData
 
 	default:
 		// No nothing if the event type is not supported
-		log.Warn("Unsupported action type", "action", rawLog.Action)
+		log.Warn("unsupported action type", "action", rawLog.Action)
 		return nil, nil
 	}
 
-	log.Debug("Parsed event successfully", "processedEvent", processedEvent)
+	log.Debug("parsed event successfully", "processedEvent", processedEvent)
 	return &processedEvent, nil
 }
 
