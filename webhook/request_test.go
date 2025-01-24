@@ -21,7 +21,7 @@ func TestSendRequest(t *testing.T) {
 	log := slog.New(slog.NewJSONHandler(os.Stdout, nil))
 
 	// Set up a mock server
-	var receivedPayload parser.OdkAuditLog
+	var receivedPayload parser.ProcessedEvent
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// Verify content type
 		is.Equal("application/json", r.Header.Get("Content-Type"))
@@ -42,26 +42,42 @@ func TestSendRequest(t *testing.T) {
 	testCases := []struct {
 		name         string
 		event        parser.ProcessedEvent
-		expectedID   string
+		expectedId string
+		expectedType string
 		expectedData interface{}
 	}{
 		{
 			name: "Submission Create Event",
 			event: parser.ProcessedEvent{
 				ID:   "23dc865a-4757-431e-b182-67e7d5581c81",
+				Type: "submission.create",
 				Data: "<submission>XML Data</submission>",
 			},
-			expectedID:   "23dc865a-4757-431e-b182-67e7d5581c81",
+			expectedId:   "23dc865a-4757-431e-b182-67e7d5581c81",
+			expectedType: "submission.create",
 			expectedData: "<submission>XML Data</submission>",
 		},
 		{
 			name: "Entity Update Event",
 			event: parser.ProcessedEvent{
 				ID:   "45fgh789-e32c-56d2-a765-427654321abc",
+				Type: "entity.update.version",
 				Data: "{\"field\":\"value\"}",
 			},
-			expectedID:   "45fgh789-e32c-56d2-a765-427654321abc",
+			expectedId:   "45fgh789-e32c-56d2-a765-427654321abc",
+			expectedType: "entity.update.version",
 			expectedData: "{\"field\":\"value\"}",
+		},
+		{
+			name: "Submission Review Event",
+			event: parser.ProcessedEvent{
+				ID:   "45fgh789-e32c-56d2-a765-427654321abc",
+				Type: "submission.update",
+				Data: "approved",
+			},
+			expectedId:   "45fgh789-e32c-56d2-a765-427654321abc",
+			expectedType: "submission.update",
+			expectedData: "approved",
 		},
 	}
 
@@ -75,7 +91,8 @@ func TestSendRequest(t *testing.T) {
 			SendRequest(log, ctx, server.URL, tc.event)
 
 			// Validate the received payload
-			is.Equal(tc.expectedID, receivedPayload.ID)
+			is.Equal(tc.expectedId, receivedPayload.ID)
+			is.Equal(tc.expectedType, receivedPayload.Type)
 			is.Equal(tc.expectedData, receivedPayload.Data)
 		})
 	}

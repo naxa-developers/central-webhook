@@ -24,11 +24,12 @@ func TestSetupWebhook(t *testing.T) {
 	}
 
 	is := is.New(t)
+	wg := sync.WaitGroup{}
 	log := slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
 		Level: slog.LevelDebug,
 	}))
-	ctx := context.Background()
-	ctx, cancel := context.WithCancel(ctx)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 
 	dbPool, err := db.InitPool(ctx, log, dbUri)
 	is.NoErr(err)
@@ -109,12 +110,11 @@ func TestSetupWebhook(t *testing.T) {
 	defer mockServer.Close()
 
 	// Start webhook listener
-	wg := sync.WaitGroup{}
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
 		log.Info("starting webhook listener")
-		err := SetupWebhook(log, ctx, dbPool, mockServer.URL, mockServer.URL)
+		err := SetupWebhook(log, ctx, dbPool, mockServer.URL, mockServer.URL, mockServer.URL)
 		if err != nil && ctx.Err() == nil {
 			log.Error("webhook listener error", "error", err)
 		}
@@ -153,4 +153,6 @@ func TestSetupWebhook(t *testing.T) {
 	wg.Wait()
 	conn.Exec(ctx, `DROP TABLE IF EXISTS entity_defs;`)
 	conn.Exec(ctx, `DROP TABLE IF EXISTS audits;`)
+	conn.Release()
+	dbPool.Close()
 }

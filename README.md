@@ -20,8 +20,9 @@ Then run with:
 ```bash
 ./centralwebhook \
     -db 'postgresql://{user}:{password}@{hostname}/{db}?sslmode=disable' \
-    -entityUrl 'https://your.domain.com/some/webhook' \
-    -submissionUrl 'https://your.domain.com/some/webhook'
+    -updateEntityUrl 'https://your.domain.com/some/webhook' \
+    -newSubmissionUrl 'https://your.domain.com/some/webhook' \
+    -reviewSubmissionUrl 'https://your.domain.com/some/webhook'
 ```
 
 > [!TIP]
@@ -32,16 +33,18 @@ Then run with:
 ```bash
 docker run -d ghcr.io/hotosm/central-webhook:latest \
     -db 'postgresql://{user}:{password}@{hostname}/{db}?sslmode=disable' \
-    -entityUrl 'https://your.domain.com/some/webhook' \
-    -submissionUrl 'https://your.domain.com/some/webhook'
+    -updateEntityUrl 'https://your.domain.com/some/webhook' \
+    -newSubmissionUrl 'https://your.domain.com/some/webhook' \
+    -reviewSubmissionUrl 'https://your.domain.com/some/webhook'
 ```
 
 Environment variables are also supported:
 
 ```dotenv
 CENTRAL_WEBHOOK_DB_URI=postgresql://user:pass@localhost:5432/db_name?sslmode=disable
-CENTRAL_WEBHOOK_ENTITY_URL=https://your.domain.com/some/webhook
-CENTRAL_WEBHOOK_SUBMISSION_URL=https://your.domain.com/some/webhook
+CENTRAL_WEBHOOK_UPDATE_ENTITY_URL=https://your.domain.com/some/webhook
+CENTRAL_WEBHOOK_REVIEW_SUBMISSION_URL=https://your.domain.com/some/webhook
+CENTRAL_WEBHOOK_NEW_SUBMISSION_URL=https://your.domain.com/some/webhook
 CENTRAL_WEBHOOK_API_KEY=ksdhfiushfiosehf98e3hrih39r8hy439rh389r3hy983y
 CENTRAL_WEBHOOK_LOG_LEVEL=DEBUG
 ```
@@ -79,6 +82,7 @@ err = SetupWebhook(
     dbPool,
     "https://your.domain.com/some/entity/webhook",
     "https://your.domain.com/some/submission/webhook",
+    "https://your.domain.com/some/review/webhook",
 )
 if err != nil {
     fmt.Fprintf(os.Stderr, "error setting up webhook: %v", err)
@@ -107,6 +111,6 @@ Example:
 ```bash
 ./centralwebhook \
     -db 'postgresql://{user}:{password}@{hostname}/{db}?sslmode=disable' \
-    -entityUrl 'https://your.domain.com/some/webhook' \
+    -updateEntityUrl 'https://your.domain.com/some/webhook' \
     -apiKey 'ksdhfiushfiosehf98e3hrih39r8hy439rh389r3hy983y'
 ```

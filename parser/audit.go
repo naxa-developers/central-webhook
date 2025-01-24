@@ -4,9 +4,11 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"log/slog"
 )
 
+// ** Entities ** //
 // Define the nested structs for the details field
 type OdkEntityRef struct {
 	Uuid    string `json:"uuid"` // Use string for UUID
@@ -19,11 +21,32 @@ type OdkEntityDetails struct {
 	EntityDefId int          `json:"entityDefId"`
 }
 
+// ** New Submissions ** //
+
 type OdkNewSubmissionDetails struct {
 	InstanceId      string `json:"instanceId"` // Use string for UUID
 	SubmissionId    int    `json:"submissionId"`
 	SubmissionDefId int    `json:"submissionDefId"`
 }
+
+// ** Review Submissions ** //
+
+// Define the reviewState enum options
+type ReviewState string
+
+const (
+	ReviewStateApproved  ReviewState = "approved"
+	ReviewStateHasIssues ReviewState = "hasIssues"
+	ReviewStateRejected  ReviewState = "rejected"
+)
+
+type OdkReviewSubmissionDetails struct {
+	InstanceId      string      `json:"instanceId"` // Use string for UUID
+	ReviewState     ReviewState `json:"reviewState"`
+	SubmissionDefId int         `json:"submissionDefId"`
+}
+
+// ** High level wrapper structs ** //
 
 // OdkAuditLog represents the main structure for the audit log (returned by pg_notify)
 type OdkAuditLog struct {
@@ -98,10 +121,21 @@ func ParseEventJson(log *slog.Logger, ctx context.Context, data []byte) (*Proces
 		}
 		processedEvent.Data = rawData
 
+	case "submission.update":
+		var submissionDetails OdkReviewSubmissionDetails
+		if err := parseDetails(rawLog.Details, &submissionDetails); err != nil {
+			log.Error("failed to parse submission.update details", "error", err)
+			return nil, err
+		}
+		processedEvent.Type = "submission.update"
+		processedEvent.ID = submissionDetails.InstanceId
+		// submission.update has no 'data' key, but instead only a reviewState
+		processedEvent.Data = submissionDetails.ReviewState
+
 	default:
 		// No nothing if the event type is not supported
 		log.Warn("unsupported action type", "action", rawLog.Action)
-		return nil, nil
+		return nil, fmt.Errorf("unsupported action type")
 	}
 
 	log.Debug("parsed event successfully", "processedEvent", processedEvent)

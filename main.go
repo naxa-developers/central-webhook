@@ -41,7 +41,7 @@ func SetupWebhook(
 	log *slog.Logger,
 	ctx context.Context,
 	dbPool *pgxpool.Pool,
-	entityUrl, submissionUrl string,
+	updateEntityUrl, newSubmissionUrl, reviewSubmissionUrl string,
 ) error {
 	// setup the listener
 	listener := db.NewListener(dbPool)
@@ -83,10 +83,12 @@ func SetupWebhook(
 
 				// Only send the request for correctly parsed (supported) events
 				if parsedData != nil {
-					if parsedData.Type == "entity.update.version" && entityUrl != "" {
-						webhook.SendRequest(log, ctx, entityUrl, *parsedData)
-					} else if parsedData.Type == "submission.create" && submissionUrl != "" {
-						webhook.SendRequest(log, ctx, submissionUrl, *parsedData)
+					if parsedData.Type == "entity.update.version" && updateEntityUrl != "" {
+						webhook.SendRequest(log, ctx, updateEntityUrl, *parsedData)
+					} else if parsedData.Type == "submission.create" && newSubmissionUrl != "" {
+						webhook.SendRequest(log, ctx, newSubmissionUrl, *parsedData)
+					} else if parsedData.Type == "submission.update" && reviewSubmissionUrl != "" {
+						webhook.SendRequest(log, ctx, reviewSubmissionUrl, *parsedData)
 					} else {
 						log.Warn("unknown event type or no webhook URL provided", "eventType", parsedData.Type)
 					}
@@ -137,18 +139,22 @@ func main() {
 
 	// Read environment variables
 	defaultDbUri := os.Getenv("CENTRAL_WEBHOOK_DB_URI")
-	defaultEntityUrl := os.Getenv("CENTRAL_WEBHOOK_ENTITY_URL")
-	defaultSubmissionUrl := os.Getenv("CENTRAL_WEBHOOK_SUBMISSION_URL")
+	defaultUpdateEntityUrl := os.Getenv("CENTRAL_WEBHOOK_UPDATE_ENTITY_URL")
+	defaultNewSubmissionUrl := os.Getenv("CENTRAL_WEBHOOK_NEW_SUBMISSION_URL")
+	defaultReviewSubmissionUrl := os.Getenv("CENTRAL_WEBHOOK_REVIEW_SUBMISSION_URL")
 	defaultLogLevel := os.Getenv("CENTRAL_WEBHOOK_LOG_LEVEL")
 
 	var dbUri string
 	flag.StringVar(&dbUri, "db", defaultDbUri, "DB host (postgresql://{user}:{password}@{hostname}/{db}?sslmode=disable)")
 
-	var entityUrl string
-	flag.StringVar(&entityUrl, "entityUrl", defaultEntityUrl, "Webhook URL for entity events")
+	var updateEntityUrl string
+	flag.StringVar(&updateEntityUrl, "updateEntityUrl", defaultUpdateEntityUrl, "Webhook URL for update entity events")
 
-	var submissionUrl string
-	flag.StringVar(&submissionUrl, "submissionUrl", defaultSubmissionUrl, "Webhook URL for submission events")
+	var newSubmissionUrl string
+	flag.StringVar(&newSubmissionUrl, "newSubmissionUrl", defaultNewSubmissionUrl, "Webhook URL for new submission events")
+
+	var reviewSubmissionUrl string
+	flag.StringVar(&reviewSubmissionUrl, "reviewSubmissionUrl", defaultReviewSubmissionUrl, "Webhook URL for review submission events")
 
 	var debug bool
 	flag.BoolVar(&debug, "debug", false, "Enable debug logging")
@@ -172,8 +178,8 @@ func main() {
 		os.Exit(1)
 	}
 
-	if entityUrl == "" && submissionUrl == "" {
-		fmt.Fprintf(os.Stderr, "At least one of entityUrl or submissionUrl is required\n")
+	if updateEntityUrl == "" && newSubmissionUrl == "" && reviewSubmissionUrl == "" {
+		fmt.Fprintf(os.Stderr, "At least one of updateEntityUrl, newSubmissionUrl, reviewSubmissionUrl is required\n")
 		flag.PrintDefaults()
 		os.Exit(1)
 	}
@@ -186,7 +192,7 @@ func main() {
 	}
 
 	printStartupMsg()
-	err = SetupWebhook(log, ctx, dbPool, entityUrl, submissionUrl)
+	err = SetupWebhook(log, ctx, dbPool, updateEntityUrl, newSubmissionUrl, reviewSubmissionUrl)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "error setting up webhook: %v", err)
 		os.Exit(1)

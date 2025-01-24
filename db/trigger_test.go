@@ -159,7 +159,7 @@ func TestEntityTrigger(t *testing.T) {
 }
 
 // Test a new submission event type
-func TestSubmissionTrigger(t *testing.T) {
+func TestNewSubmissionTrigger(t *testing.T) {
 	dbUri := os.Getenv("CENTRAL_WEBHOOK_DB_URI")
 	if len(dbUri) == 0 {
 		// Default
@@ -288,10 +288,141 @@ func TestSubmissionTrigger(t *testing.T) {
 	is.True(ok)                                      // Ensure details is a valid map
 	is.Equal(details["submissionDefId"], float64(1)) // Ensure submissionDefId has the correct value
 
-	// Check nested JSON value for status in data
 	data, ok := notification["data"].(map[string]interface{})
 	is.True(ok)                              // Ensure data is a valid map
 	is.Equal(data["xml"], `<data id="xxx">`) // Ensure `xml` has the correct value
+
+	// Cleanup
+	conn.Exec(ctx, `DROP TABLE IF EXISTS submission_defs;`)
+	conn.Exec(ctx, `DROP TABLE IF EXISTS audits_test;`)
+	cancel()
+	sub.Unlisten(ctx) // uses background ctx anyway
+	listener.Close(ctx)
+	wg.Wait()
+}
+
+// Test a new submission event type
+func TestReviewSubmissionTrigger(t *testing.T) {
+	dbUri := os.Getenv("CENTRAL_WEBHOOK_DB_URI")
+	if len(dbUri) == 0 {
+		// Default
+		dbUri = "postgresql://odk:odk@db:5432/odk?sslmode=disable"
+	}
+
+	is := is.New(t)
+	log := slog.New(slog.NewJSONHandler(os.Stdout, nil))
+	ctx := context.Background()
+	ctx, cancel := context.WithCancel(ctx)
+	wg := sync.WaitGroup{}
+	pool, err := InitPool(ctx, log, dbUri)
+	is.NoErr(err)
+
+	// Get connection and defer close
+	conn, err := pool.Acquire(ctx)
+	is.NoErr(err)
+	defer conn.Release()
+
+	// Create submission_defs table
+	_, err = conn.Exec(ctx, `DROP TABLE IF EXISTS submission_defs;`)
+	is.NoErr(err)
+	submissionTableCreateSql := `
+		CREATE TABLE submission_defs (
+			id int4,
+			"submissionId" int4,
+			"instanceId" uuid
+		);
+	`
+	_, err = conn.Exec(ctx, submissionTableCreateSql)
+	is.NoErr(err)
+
+	// Create audits_test table
+	_, err = conn.Exec(ctx, `DROP TABLE IF EXISTS audits_test;`)
+	is.NoErr(err)
+	auditTableCreateSql := `
+		CREATE TABLE audits_test (
+			"actorId" int,
+			action varchar,
+			details jsonb
+		);
+	`
+	_, err = conn.Exec(ctx, auditTableCreateSql)
+	is.NoErr(err)
+
+	// Insert an submission record
+	submissionInsertSql := `
+		INSERT INTO submission_defs (
+			id,
+			"submissionId",
+			"instanceId"
+		) VALUES (
+		 	1,
+            2,
+			'33448049-0df1-4426-9392-d3a294d638ad'
+		);
+	`
+	_, err = conn.Exec(ctx, submissionInsertSql)
+	is.NoErr(err)
+
+	// Create audit trigger
+	err = CreateTrigger(ctx, pool, "audits_test")
+	is.NoErr(err)
+
+	// Create listener
+	listener := NewListener(pool)
+	err = listener.Connect(ctx)
+	is.NoErr(err)
+
+	// Create notifier
+	n := NewNotifier(log, listener)
+	wg.Add(1)
+	go func() {
+		n.Run(ctx)
+		wg.Done()
+	}()
+	sub := n.Listen("odk-events")
+
+	// Insert an audit record
+	auditInsertSql := `
+		INSERT INTO audits_test ("actorId", action, details)
+		VALUES (5, 'submission.update', '{"submissionDefId": 1, "reviewState": "approved"}');
+	`
+	_, err = conn.Exec(ctx, auditInsertSql)
+	is.NoErr(err)
+
+	// Validate the notification content
+	wg.Add(1)
+	out := make(chan string)
+	go func() {
+		<-sub.EstablishedC()
+		msg := <-sub.NotificationC() // Get the notification
+
+		log.Info("notification received", "raw", msg)
+
+		out <- string(msg) // Send it to the output channel
+		close(out)
+		wg.Done()
+	}()
+
+	// Process the notification
+	var notification map[string]interface{}
+	for msg := range out {
+		err := json.Unmarshal([]byte(msg), &notification)
+		is.NoErr(err) // Ensure the JSON payload is valid
+		log.Info("parsed notification", "notification", notification)
+	}
+
+	// Validate the JSON content
+	is.Equal(notification["dml_action"], "INSERT")        // Ensure action is correct
+	is.Equal(notification["action"], "submission.update") // Ensure action is correct
+	is.True(notification["details"] != nil)               // Ensure details key exists
+	is.True(notification["data"] == nil)                  // Data key should be null!
+
+	// Check nested JSON value for submissionDefId and reviewState in details
+	details, ok := notification["details"].(map[string]interface{})
+	is.True(ok)                                                             // Ensure details is a valid map
+	is.Equal(details["submissionDefId"], float64(1))                        // Ensure submissionDefId has the correct value
+	is.Equal(details["instanceId"], "33448049-0df1-4426-9392-d3a294d638ad") // Ensure instanceId has the correct value
+	is.Equal(details["reviewState"], "approved")                            // Ensure reviewState has the correct value
 
 	// Cleanup
 	conn.Exec(ctx, `DROP TABLE IF EXISTS submission_defs;`)

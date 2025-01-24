@@ -45,7 +45,7 @@ func CreateTrigger(ctx context.Context, dbPool *pgxpool.Pool, tableName string) 
 					FROM entity_defs
 					WHERE entity_defs.id = (NEW.details->>'entityDefId')::int;
 
-					-- Merge the additional data into the original JSON
+					-- Merge the entity details into the JSON data key
 					js := jsonb_set(js, '{data}', result_data, true);
 
 					-- Notify the odk-events queue
@@ -57,8 +57,20 @@ func CreateTrigger(ctx context.Context, dbPool *pgxpool.Pool, tableName string) 
 					FROM submission_defs
 					WHERE submission_defs.id = (NEW.details->>'submissionDefId')::int;
 
-					-- Merge the additional data into the original JSON
+					-- Merge the submission XML into the JSON data key
 					js := jsonb_set(js, '{data}', result_data, true);
+
+					-- Notify the odk-events queue
+					PERFORM pg_notify('odk-events', js::text);
+
+				WHEN 'submission.update' THEN
+					SELECT jsonb_build_object('instanceId', submission_defs."instanceId")
+					INTO result_data
+					FROM submission_defs
+					WHERE submission_defs.id = (NEW.details->>'submissionDefId')::int;
+
+					-- Merge the instanceId into the existing 'details' key in JSON
+					js := jsonb_set(js, '{details}', (js->'details') || result_data, true);
 
 					-- Notify the odk-events queue
 					PERFORM pg_notify('odk-events', js::text);

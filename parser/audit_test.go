@@ -17,8 +17,8 @@ func TestParseJsonString(t *testing.T) {
 		input := []byte(`{"id":"123","action":"entity.update.version","actorId":1,"details":{"entity":{"uuid":"abc","dataset":"test"}},"data":{}}`)
 		result, err := ParseJsonString(log, input)
 		is.NoErr(err)
-		is.Equal("123", result.ID)
 		is.Equal("entity.update.version", result.Action)
+		is.Equal(1, result.ActorID)
 	})
 
 	t.Run("Empty Input", func(t *testing.T) {
@@ -71,6 +71,17 @@ func TestParseEventJson(t *testing.T) {
 		wrappedData, ok := result.Data.(map[string]interface{})
 		is.True(ok)
 		is.Equal("<submission></submission>", wrappedData["xml"])
+	})
+
+	t.Run("Submission Review", func(t *testing.T) {
+		input := []byte(`{
+			"id":"456",
+			"action":"submission.update",
+			"details":{"reviewState":"approved","submissionId":789,"submissionDefId":101112}
+		}`)
+		result, err := ParseEventJson(log, ctx, input)
+		is.NoErr(err)
+		is.Equal(ReviewStateApproved, result.Data)
 	})
 
 	t.Run("Unsupported Action", func(t *testing.T) {
