@@ -2,7 +2,7 @@
 
 networks:
   net:
-    name: fmtm-splitter
+    name: central-webhook
 
 services:
   webhook:
