@@ -8,7 +8,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/hotosm/odk-webhook/parser"
+	"github.com/hotosm/central-webhook/parser"
 )
 
 // SendRequest parses the request content JSON from the PostgreSQL notification

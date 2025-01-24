@@ -5,11 +5,11 @@ networks:
     name: fmtm-splitter
 
 services:
-  odkhook:
-    image: "ghcr.io/hotosm/odk-webhook:${TAG_OVERRIDE:-ci}"
+  webhook:
+    image: "ghcr.io/hotosm/central-webhook:${TAG_OVERRIDE:-ci}"
     build:
       target: build
-    container_name: odkhook
+    container_name: centralwebhook
     volumes:
       # Mount local files
       - ./go.mod:/app/go.mod:ro
@@ -21,8 +21,7 @@ services:
       - ./parser:/app/parser:ro
     # environment:
       # # Override to use database on host
-      # ODK_WEBHOOK_DB_URI: postgresql://odk:odk@host.docker.internal:5434/odk?sslmode=disable
-      # ODK_WEBHOOK_WEBHOOK_URL: 
+      # CENTRAL_WEBHOOK_DB_URI: postgresql://odk:odk@host.docker.internal:5434/odk?sslmode=disable
     depends_on:
       db:
         condition: service_healthy
@@ -36,18 +35,18 @@ services:
 
   db:
     image: "postgis/postgis:17-3.5-alpine"
-    container_name: odkhook-db
+    container_name: centralwebhook-db
     environment:
       - POSTGRES_USER=odk
       - POSTGRES_PASSWORD=odk
-      - POSTGRES_DB=odkhook
+      - POSTGRES_DB=odk
     ports:
       - "5439:5432"
     networks:
       - net
     restart: "unless-stopped"
     healthcheck:
-      test: pg_isready -U odk -d odkhook
+      test: pg_isready -U odk -d odk
       start_period: 5s
       interval: 10s
       timeout: 5s

@@ -14,13 +14,13 @@ import (
 // with username odk and password odk.
 //
 // The easiest way to ensure this is to run the tests with docker compose:
-// docker compose run --rm odkhook
+// docker compose run --rm webhook
 
 func TestNotifier(t *testing.T) {
-	dbUri := os.Getenv("ODK_WEBHOOK_DB_URI")
+	dbUri := os.Getenv("CENTRAL_WEBHOOK_DB_URI")
 	if len(dbUri) == 0 {
 		// Default
-		dbUri = "postgresql://odk:odk@db:5432/odkhook?sslmode=disable"
+		dbUri = "postgresql://odk:odk@db:5432/odk?sslmode=disable"
 	}
 
 	is := is.New(t)

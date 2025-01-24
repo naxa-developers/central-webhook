@@ -7,7 +7,7 @@ WORKDIR /app
 COPY go.mod go.sum ./
 RUN go mod download
 COPY . .
-RUN CGO_ENABLED=0 GOOS=linux go build -o /app/odkhook
+RUN CGO_ENABLED=0 GOOS=linux go build -o /app/centralwebhook
 
 
 # Run the tests in the container
@@ -24,8 +24,8 @@ RUN useradd -u 1000 nonroot -g 1000
 # Deploy the application binary into sratch image
 FROM scratch AS release
 WORKDIR /app
-COPY --from=build /app/odkhook /app/odkhook
+COPY --from=build /app/centralwebhook /app/centralwebhook
 COPY --from=useradd /etc/group /etc/group
 COPY --from=useradd /etc/passwd /etc/passwd
 USER nonroot:nonroot
-ENTRYPOINT ["/app/odkhook"]
+ENTRYPOINT ["/app/centralwebhook"]

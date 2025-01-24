@@ -1,4 +1,4 @@
-module github.com/hotosm/odk-webhook
+module github.com/hotosm/central-webhook
 
 go 1.23.2
 

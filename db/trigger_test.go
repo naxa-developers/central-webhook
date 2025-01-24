@@ -16,13 +16,13 @@ import (
 // with username odk and password odk.
 //
 // The easiest way to ensure this is to run the tests with docker compose:
-// docker compose run --rm odkhook
+// docker compose run --rm webhook
 
 func TestEntityTrigger(t *testing.T) {
-	dbUri := os.Getenv("ODK_WEBHOOK_DB_URI")
+	dbUri := os.Getenv("CENTRAL_WEBHOOK_DB_URI")
 	if len(dbUri) == 0 {
 		// Default
-		dbUri = "postgresql://odk:odk@db:5432/odkhook?sslmode=disable"
+		dbUri = "postgresql://odk:odk@db:5432/odk?sslmode=disable"
 	}
 
 	is := is.New(t)
@@ -160,10 +160,10 @@ func TestEntityTrigger(t *testing.T) {
 
 // Test a new submission event type
 func TestSubmissionTrigger(t *testing.T) {
-	dbUri := os.Getenv("ODK_WEBHOOK_DB_URI")
+	dbUri := os.Getenv("CENTRAL_WEBHOOK_DB_URI")
 	if len(dbUri) == 0 {
 		// Default
-		dbUri = "postgresql://odk:odk@db:5432/odkhook?sslmode=disable"
+		dbUri = "postgresql://odk:odk@db:5432/odk?sslmode=disable"
 	}
 
 	is := is.New(t)
@@ -304,10 +304,10 @@ func TestSubmissionTrigger(t *testing.T) {
 
 // Test an unsupported event type and ensure nothing is triggered
 func TestNoTrigger(t *testing.T) {
-	dbUri := os.Getenv("ODK_WEBHOOK_DB_URI")
+	dbUri := os.Getenv("CENTRAL_WEBHOOK_DB_URI")
 	if len(dbUri) == 0 {
 		// Default
-		dbUri = "postgresql://odk:odk@db:5432/odkhook?sslmode=disable"
+		dbUri = "postgresql://odk:odk@db:5432/odk?sslmode=disable"
 	}
 
 	is := is.New(t)

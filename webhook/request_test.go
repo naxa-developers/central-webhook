@@ -13,7 +13,7 @@ import (
 
 	"github.com/matryer/is"
 
-	"github.com/hotosm/odk-webhook/parser"
+	"github.com/hotosm/central-webhook/parser"
 )
 
 func TestSendRequest(t *testing.T) {

@@ -15,9 +15,9 @@ import (
 
 	"github.com/jackc/pgx/v5/pgxpool"
 
-	"github.com/hotosm/odk-webhook/db"
-	"github.com/hotosm/odk-webhook/parser"
-	"github.com/hotosm/odk-webhook/webhook"
+	"github.com/hotosm/central-webhook/db"
+	"github.com/hotosm/central-webhook/parser"
+	"github.com/hotosm/central-webhook/webhook"
 )
 
 func getDefaultLogger(lvl slog.Level) *slog.Logger {
@@ -130,10 +130,10 @@ func main() {
 	ctx := context.Background()
 
 	// Read environment variables
-	defaultDbUri := os.Getenv("ODK_WEBHOOK_DB_URI")
-	defaultEntityUrl := os.Getenv("ODK_WEBHOOK_ENTITY_URL")
-	defaultSubmissionUrl := os.Getenv("ODK_WEBHOOK_SUBMISSION_URL")
-	defaultLogLevel := os.Getenv("ODK_WEBHOOK_LOG_LEVEL")
+	defaultDbUri := os.Getenv("CENTRAL_WEBHOOK_DB_URI")
+	defaultEntityUrl := os.Getenv("CENTRAL_WEBHOOK_ENTITY_URL")
+	defaultSubmissionUrl := os.Getenv("CENTRAL_WEBHOOK_SUBMISSION_URL")
+	defaultLogLevel := os.Getenv("CENTRAL_WEBHOOK_LOG_LEVEL")
 
 	var dbUri string
 	flag.StringVar(&dbUri, "db", defaultDbUri, "DB host (postgresql://{user}:{password}@{hostname}/{db}?sslmode=disable)")
@@ -165,7 +165,7 @@ func main() {
 		flag.PrintDefaults()
 		os.Exit(1)
 	}
-	
+
 	if entityUrl == "" && submissionUrl == "" {
 		fmt.Fprintf(os.Stderr, "At least one of entityUrl or submissionUrl is required\n")
 		flag.PrintDefaults()

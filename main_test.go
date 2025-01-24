@@ -14,15 +14,15 @@ package main
 
 // 	"github.com/matryer/is"
 
-// 	"github.com/hotosm/odk-webhook/parser"
-// 	"github.com/hotosm/odk-webhook/db"
+// 	"github.com/hotosm/central-webhook/parser"
+// 	"github.com/hotosm/central-webhook/db"
 // )
 
 // func TestSetupWebhook(t *testing.T) {
-// 	dbUri := os.Getenv("ODK_WEBHOOK_DB_URI")
+// 	dbUri := os.Getenv("CENTRAL_WEBHOOK_DB_URI")
 // 	if len(dbUri) == 0 {
 // 		// Default
-// 		dbUri = "postgresql://odk:odk@db:5432/odkhook?sslmode=disable"
+// 		dbUri = "postgresql://odk:odk@db:5432/odk?sslmode=disable"
 // 	}
 
 // 	is := is.New(t)
