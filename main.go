@@ -90,7 +90,15 @@ func SetupWebhook(
 					} else if parsedData.Type == "submission.update" && reviewSubmissionUrl != "" {
 						webhook.SendRequest(log, ctx, reviewSubmissionUrl, *parsedData)
 					} else {
-						log.Warn("unknown event type or no webhook URL provided", "eventType", parsedData.Type)
+
+						log.Debug(
+							fmt.Sprintf(
+								"%s event type was triggered, but no webhook url was provided",
+								parsedData.Type,
+							),
+							"eventType",
+							parsedData.Type,
+						)
 					}
 				}
 			}
