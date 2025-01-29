@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"net/http"
 	"time"
+	"io"
 
 	"github.com/hotosm/central-webhook/parser"
 )
@@ -41,6 +42,12 @@ func SendRequest(
 		log.Error("failed to send HTTP request", "error", err)
 		return
 	}
+	respBodyBytes, err := io.ReadAll(resp.Body)
+	if err != nil {
+		log.Error("failed to read response body", "error", err)
+		return
+	}
+	respBodyString := string(respBodyBytes)
 	defer resp.Body.Close()
 
 	// Check the response status
@@ -52,6 +59,6 @@ func SendRequest(
 			"endpoint", apiEndpoint,
 			"requestPayload", eventJson,
 			"responseCode", resp.StatusCode,
-			"responseBody", resp.Body)
+			"responseBody", respBodyString)
 	}
 }
