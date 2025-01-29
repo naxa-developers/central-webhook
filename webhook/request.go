@@ -47,6 +47,11 @@ func SendRequest(
 	if resp.StatusCode >= http.StatusOK && resp.StatusCode < http.StatusMultipleChoices {
 		log.Info("webhook called successfully", "status", resp.StatusCode, "endpoint", apiEndpoint)
 	} else {
-		log.Error("failed to call webhook", "status", resp.StatusCode, "endpoint", apiEndpoint)
+		log.Error(
+			"failed to call webhook",
+			"endpoint", apiEndpoint,
+			"requestPayload", eventJson,
+			"responseCode", resp.StatusCode,
+			"responseBody", resp.Body)
 	}
 }
