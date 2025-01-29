@@ -42,7 +42,7 @@ func TestSendRequest(t *testing.T) {
 	testCases := []struct {
 		name         string
 		event        parser.ProcessedEvent
-		expectedId string
+		expectedId   string
 		expectedType string
 		expectedData interface{}
 	}{

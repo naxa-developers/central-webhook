@@ -11,7 +11,7 @@ import (
 // ** Entities ** //
 // Define the nested structs for the details field
 type OdkEntityRef struct {
-	Uuid    string `json:"uuid"` // Use string for UUID
+	Uuid    string `json:"uuid"` // Use string for UUID, as it may be 'uuid:xxx-xxx'
 	Dataset string `json:"dataset"`
 }
 
@@ -21,29 +21,13 @@ type OdkEntityDetails struct {
 	EntityDefId int          `json:"entityDefId"`
 }
 
-// ** New Submissions ** //
+// ** Submissions ** //
 
-type OdkNewSubmissionDetails struct {
-	InstanceId      string `json:"instanceId"` // Use string for UUID
-	SubmissionId    int    `json:"submissionId"`
-	SubmissionDefId int    `json:"submissionDefId"`
-}
-
-// ** Review Submissions ** //
-
-// Define the reviewState enum options
-type ReviewState string
-
-const (
-	ReviewStateApproved  ReviewState = "approved"
-	ReviewStateHasIssues ReviewState = "hasIssues"
-	ReviewStateRejected  ReviewState = "rejected"
-)
-
-type OdkReviewSubmissionDetails struct {
-	InstanceId      string      `json:"instanceId"` // Use string for UUID
-	ReviewState     ReviewState `json:"reviewState"`
-	SubmissionDefId int         `json:"submissionDefId"`
+type OdkSubmissionDetails struct {
+	InstanceId string `json:"instanceId"` // Use string for UUID, as it may be 'uuid:xxx-xxx'
+	// The submissionId field is present, but it's a database reference only, so we ignore it
+	// SubmissionId    int    `json:"submissionId"`
+	SubmissionDefId int `json:"submissionDefId"`
 }
 
 // ** High level wrapper structs ** //
@@ -53,8 +37,7 @@ type OdkAuditLog struct {
 	Notes   *string     `json:"notes"` // Pointer to handle null values
 	Action  string      `json:"action"`
 	ActeeID string      `json:"acteeId"` // Use string for UUID
-	ActorID int         `json:"actorId"` // Integer for the actor ID
-	Claimed *bool       `json:"claimed"` // Pointer for nullable boolean
+	ActorID int         `json:"actorId"`
 	Details interface{} `json:"details"` // Use an interface to handle different detail types
 	Data    interface{} `json:"data"`    // Use an interface to handle different data types
 }
@@ -105,7 +88,7 @@ func ParseEventJson(log *slog.Logger, ctx context.Context, data []byte) (*Proces
 		processedEvent.Data = rawLog.Data
 
 	case "submission.create":
-		var submissionDetails OdkNewSubmissionDetails
+		var submissionDetails OdkSubmissionDetails
 		if err := parseDetails(rawLog.Details, &submissionDetails); err != nil {
 			log.Error("failed to parse submission.create details", "error", err)
 			return nil, err
@@ -122,15 +105,14 @@ func ParseEventJson(log *slog.Logger, ctx context.Context, data []byte) (*Proces
 		processedEvent.Data = rawData
 
 	case "submission.update":
-		var submissionDetails OdkReviewSubmissionDetails
+		var submissionDetails OdkSubmissionDetails
 		if err := parseDetails(rawLog.Details, &submissionDetails); err != nil {
 			log.Error("failed to parse submission.update details", "error", err)
 			return nil, err
 		}
 		processedEvent.Type = "submission.update"
 		processedEvent.ID = submissionDetails.InstanceId
-		// submission.update has no 'data' key, but instead only a reviewState
-		processedEvent.Data = submissionDetails.ReviewState
+		processedEvent.Data = rawLog.Data
 
 	default:
 		// No nothing if the event type is not supported

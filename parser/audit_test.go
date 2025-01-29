@@ -77,11 +77,16 @@ func TestParseEventJson(t *testing.T) {
 		input := []byte(`{
 			"id":"456",
 			"action":"submission.update",
-			"details":{"reviewState":"approved","submissionId":789,"submissionDefId":101112}
+			"details":{"submissionId":789,"submissionDefId":101112},
+			"data":{"reviewState":"approved"}
 		}`)
 		result, err := ParseEventJson(log, ctx, input)
 		is.NoErr(err)
-		is.Equal(ReviewStateApproved, result.Data)
+
+		wrappedData, ok := result.Data.(map[string]interface{})
+		is.True(ok)
+		// This will check if ODK changes its audit structure for submission.update over time
+		is.Equal("approved", wrappedData["reviewState"])
 	})
 
 	t.Run("Unsupported Action", func(t *testing.T) {
