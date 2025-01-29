@@ -2,8 +2,15 @@
 
 Call a remote API on ODK Central database events:
 
-- New submission.
-- Update entity.
+- New submission (XML).
+- Update entity (entity properties).
+- Submission review (approved, hasIssues, rejected).
+
+## Prerequisites
+
+- ODK Central running, connecting to an accessible Postgresql database.
+- A POST webhook endpoint on your service API, to call when the selected
+  event occurs.
 
 ## Usage
 
@@ -26,7 +33,7 @@ Then run with:
 ```
 
 > [!TIP]
-> It's possible to specify a webhook for only Entities or Submissions, or both.
+> It's possible to specify a single webhook event, or multiple.
 
 ### Docker
 
@@ -92,6 +99,42 @@ if err != nil {
 > [!NOTE]
 > To not provide a webhook for either entities or submissions,
 > pass `nil` instead.
+
+## Request Examples
+
+### Entity Update (updateEntityUrl)
+
+```json
+{
+    "type": "entity.update.version",
+    "id":"uuid:3c142a0d-37b9-4d37-baf0-e58876428181",
+    "data": {
+        "entityProperty1": "someStringValue",
+        "entityProperty2": "someStringValue",
+        "entityProperty3": "someStringValue"
+    }
+}
+```
+
+### New Submission (newSubmissionUrl)
+
+```json
+{
+    "type": "submission.create",
+    "id":"uuid:3c142a0d-37b9-4d37-baf0-e58876428181",
+    "data": {"xml":"<?xml version='1.0' encoding='UTF-8' ?><data ...."}
+}
+```
+
+### Review Submission (reviewSubmissionUrl)
+
+```json
+{
+    "type":"submission.update",
+    "id":"uuid:5ed3b610-a18a-46a2-90a7-8c80c82ebbe9",
+    "data": {"reviewState":"hasIssues"}
+}
+```
 
 ## APIs With Authentication
 
