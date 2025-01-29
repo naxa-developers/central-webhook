@@ -4,10 +4,10 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"io"
 	"log/slog"
 	"net/http"
 	"time"
-	"io"
 
 	"github.com/hotosm/central-webhook/parser"
 )
@@ -19,6 +19,7 @@ func SendRequest(
 	ctx context.Context,
 	apiEndpoint string,
 	eventJson parser.ProcessedEvent,
+	apiKey *string,
 ) {
 	// Marshal the payload to JSON
 	marshaledPayload, err := json.Marshal(eventJson)
@@ -34,6 +35,10 @@ func SendRequest(
 		return
 	}
 	req.Header.Set("Content-Type", "application/json")
+	// Add X-API-Key header if apiKey is provided
+	if apiKey != nil {
+		req.Header.Set("X-API-Key", *apiKey)
+	}
 
 	// Send the request
 	client := &http.Client{Timeout: 10 * time.Second}

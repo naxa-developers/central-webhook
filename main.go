@@ -41,6 +41,7 @@ func SetupWebhook(
 	log *slog.Logger,
 	ctx context.Context,
 	dbPool *pgxpool.Pool,
+	apiKey *string, // use a pointer so it's possible to pass 'nil;
 	updateEntityUrl, newSubmissionUrl, reviewSubmissionUrl string,
 ) error {
 	// setup the listener
@@ -84,13 +85,12 @@ func SetupWebhook(
 				// Only send the request for correctly parsed (supported) events
 				if parsedData != nil {
 					if parsedData.Type == "entity.update.version" && updateEntityUrl != "" {
-						webhook.SendRequest(log, ctx, updateEntityUrl, *parsedData)
+						webhook.SendRequest(log, ctx, updateEntityUrl, *parsedData, apiKey)
 					} else if parsedData.Type == "submission.create" && newSubmissionUrl != "" {
-						webhook.SendRequest(log, ctx, newSubmissionUrl, *parsedData)
+						webhook.SendRequest(log, ctx, newSubmissionUrl, *parsedData, apiKey)
 					} else if parsedData.Type == "submission.update" && reviewSubmissionUrl != "" {
-						webhook.SendRequest(log, ctx, reviewSubmissionUrl, *parsedData)
+						webhook.SendRequest(log, ctx, reviewSubmissionUrl, *parsedData, apiKey)
 					} else {
-
 						log.Debug(
 							fmt.Sprintf(
 								"%s event type was triggered, but no webhook url was provided",
@@ -164,6 +164,9 @@ func main() {
 	var reviewSubmissionUrl string
 	flag.StringVar(&reviewSubmissionUrl, "reviewSubmissionUrl", defaultReviewSubmissionUrl, "Webhook URL for review submission events")
 
+	var apiKey string
+	flag.StringVar(&apiKey, "apiKey", "", "X-API-Key header value, for autenticating with webhook API")
+
 	var debug bool
 	flag.BoolVar(&debug, "debug", false, "Enable debug logging")
 
@@ -200,7 +203,7 @@ func main() {
 	}
 
 	printStartupMsg()
-	err = SetupWebhook(log, ctx, dbPool, updateEntityUrl, newSubmissionUrl, reviewSubmissionUrl)
+	err = SetupWebhook(log, ctx, dbPool, &apiKey, updateEntityUrl, newSubmissionUrl, reviewSubmissionUrl)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "error setting up webhook: %v", err)
 		os.Exit(1)

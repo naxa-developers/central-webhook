@@ -87,6 +87,7 @@ err = SetupWebhook(
     log,
     ctx,
     dbPool,
+    nil,
     "https://your.domain.com/some/entity/webhook",
     "https://your.domain.com/some/submission/webhook",
     "https://your.domain.com/some/review/webhook",

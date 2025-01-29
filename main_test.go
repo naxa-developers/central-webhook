@@ -114,7 +114,7 @@ package main
 // 	go func() {
 // 		defer wg.Done()
 // 		log.Info("starting webhook listener")
-// 		err := SetupWebhook(log, ctx, dbPool, mockServer.URL, mockServer.URL, mockServer.URL)
+// 		err := SetupWebhook(log, ctx, dbPool, nil, mockServer.URL, mockServer.URL, mockServer.URL)
 // 		if err != nil && ctx.Err() == nil {
 // 			log.Error("webhook listener error", "error", err)
 // 		}

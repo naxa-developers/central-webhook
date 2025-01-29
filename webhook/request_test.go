@@ -22,9 +22,13 @@ func TestSendRequest(t *testing.T) {
 
 	// Set up a mock server
 	var receivedPayload parser.ProcessedEvent
+	var receivedApiKey string
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// Verify content type
 		is.Equal("application/json", r.Header.Get("Content-Type"))
+
+		// Verify API key was received
+		receivedApiKey = r.Header.Get("X-API-Key")
 
 		// Read and parse request body
 		body, err := io.ReadAll(r.Body)
@@ -87,13 +91,16 @@ func TestSendRequest(t *testing.T) {
 			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 			defer cancel()
 
-			// Call the SendRequest function
-			SendRequest(log, ctx, server.URL, tc.event)
+			testApiKey := "test-api-key"
+			SendRequest(log, ctx, server.URL, tc.event, &testApiKey)
 
 			// Validate the received payload
 			is.Equal(tc.expectedId, receivedPayload.ID)
 			is.Equal(tc.expectedType, receivedPayload.Type)
 			is.Equal(tc.expectedData, receivedPayload.Data)
+
+			// Validate that the API key header was sent correctly
+			is.Equal("test-api-key", receivedApiKey)
 		})
 	}
 }
