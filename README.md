@@ -17,7 +17,7 @@ Call a remote API on ODK Central database events:
 The `centralwebhook` tool is a service that runs continually, monitoring the
 ODK Central database for updates and triggering the webhook as appropriate.
 
-### Binary
+### Via Binary
 
 Download the binary for your platform from the
 [releases](https://github.com/hotosm/central-webhook/releases) page.
@@ -35,7 +35,7 @@ Then run with:
 > [!TIP]
 > It's possible to specify a single webhook event, or multiple.
 
-### Docker
+### Via Docker
 
 ```bash
 docker run -d ghcr.io/hotosm/central-webhook:latest \
@@ -59,7 +59,7 @@ CENTRAL_WEBHOOK_LOG_LEVEL=DEBUG
 > [!NOTE]
 > Alternatively, add the service to your docker compose stack.
 
-### Code
+### Via Code
 
 Usage via the code / API:
 
@@ -101,7 +101,7 @@ if err != nil {
 > To not provide a webhook for either entities or submissions,
 > pass `nil` instead.
 
-## Request Examples
+## Request Payload Examples
 
 ### Entity Update (updateEntityUrl)
 
@@ -157,4 +157,65 @@ Example:
     -db 'postgresql://{user}:{password}@{hostname}/{db}?sslmode=disable' \
     -updateEntityUrl 'https://your.domain.com/some/webhook' \
     -apiKey 'ksdhfiushfiosehf98e3hrih39r8hy439rh389r3hy983y'
+```
+
+## Example Webhook Server
+
+Here is a minimal FastAPI example for receiving the webhook data:
+
+```python
+from typing import Annotated, Optional
+
+from fastapi import (
+    Depends,
+    Header,
+)
+from fastapi.exceptions import HTTPException
+from pydantic import BaseModel
+
+
+class OdkCentralWebhookRequest(BaseModel):
+    """The POST data from the central webhook service."""
+
+    type: OdkWebhookEvents
+    # NOTE we cannot use UUID validation, as Central often passes uuid as 'uuid:xxx-xxx'
+    id: str
+    # NOTE we use a dict to allow flexible passing of the data based on event type
+    data: dict
+
+
+async def valid_api_token(
+    x_api_key: Annotated[Optional[str], Header()] = None,
+):
+    """Check the API token is present for an active database user.
+
+    A header X-API-Key must be provided in the request.
+    """
+    # Logic to validate the api key here
+    return
+
+
+@router.post("/webhooks/entity-status")
+async def update_entity_status_in_fmtm(
+    current_user: Annotated[DbUser, Depends(valid_api_token)],
+    odk_event: OdkCentralWebhookRequest,
+):
+    """Update the status for an Entity in our app db.
+    """
+    log.debug(f"Webhook called with event ({odk_event.type.value})")
+
+    if odk_event.type == OdkWebhookEvents.UPDATE_ENTITY:
+        # insert state into db
+    elif odk_event.type == OdkWebhookEvents.REVIEW_SUBMISSION:
+        # update entity status in odk to match review state
+        pass
+    elif odk_event.type == OdkWebhookEvents.NEW_SUBMISSION:
+        # unsupported for now
+        log.debug(
+            "The handling of new submissions via webhook is not implemented yet."
+        )
+    else:
+        msg = f"Webhook was called for an unsupported event type ({odk_event.type.value})"
+        log.warning(msg)
+        raise HTTPException(status_code=400, detail=msg)
 ```
