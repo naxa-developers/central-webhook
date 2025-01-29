@@ -150,6 +150,7 @@ func main() {
 	defaultUpdateEntityUrl := os.Getenv("CENTRAL_WEBHOOK_UPDATE_ENTITY_URL")
 	defaultNewSubmissionUrl := os.Getenv("CENTRAL_WEBHOOK_NEW_SUBMISSION_URL")
 	defaultReviewSubmissionUrl := os.Getenv("CENTRAL_WEBHOOK_REVIEW_SUBMISSION_URL")
+	defaultApiKey := os.Getenv("CENTRAL_WEBHOOK_API_KEY")
 	defaultLogLevel := os.Getenv("CENTRAL_WEBHOOK_LOG_LEVEL")
 
 	var dbUri string
@@ -165,7 +166,7 @@ func main() {
 	flag.StringVar(&reviewSubmissionUrl, "reviewSubmissionUrl", defaultReviewSubmissionUrl, "Webhook URL for review submission events")
 
 	var apiKey string
-	flag.StringVar(&apiKey, "apiKey", "", "X-API-Key header value, for autenticating with webhook API")
+	flag.StringVar(&apiKey, "apiKey", defaultApiKey, "X-API-Key header value, for autenticating with webhook API")
 
 	var debug bool
 	flag.BoolVar(&debug, "debug", false, "Enable debug logging")
