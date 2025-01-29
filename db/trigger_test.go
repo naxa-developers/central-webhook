@@ -415,14 +415,18 @@ func TestReviewSubmissionTrigger(t *testing.T) {
 	is.Equal(notification["dml_action"], "INSERT")        // Ensure action is correct
 	is.Equal(notification["action"], "submission.update") // Ensure action is correct
 	is.True(notification["details"] != nil)               // Ensure details key exists
-	is.True(notification["data"] == nil)                  // Data key should be null!
+	is.True(notification["data"] != nil)                  // Ensure data key exists
 
-	// Check nested JSON value for submissionDefId and reviewState in details
+	// Check nested JSON value for submissionDefId
 	details, ok := notification["details"].(map[string]interface{})
 	is.True(ok)                                                             // Ensure details is a valid map
 	is.Equal(details["submissionDefId"], float64(1))                        // Ensure submissionDefId has the correct value
 	is.Equal(details["instanceId"], "33448049-0df1-4426-9392-d3a294d638ad") // Ensure instanceId has the correct value
-	is.Equal(details["reviewState"], "approved")                            // Ensure reviewState has the correct value
+
+	// Check reviewState present in data key
+	data, ok := notification["data"].(map[string]interface{})
+	is.True(ok)                               // Ensure data is a valid map
+	is.Equal(data["reviewState"], "approved") // Ensure reviewState has the correct value
 
 	// Cleanup
 	conn.Exec(ctx, `DROP TABLE IF EXISTS submission_defs;`)

@@ -69,6 +69,12 @@ func CreateTrigger(ctx context.Context, dbPool *pgxpool.Pool, tableName string) 
 					FROM submission_defs
 					WHERE submission_defs.id = (NEW.details->>'submissionDefId')::int;
 
+					-- Extract 'reviewState' from 'details' and set it in 'data'
+					js := jsonb_set(js, '{data}', jsonb_build_object('reviewState', js->'details'->>'reviewState'), true);
+
+					-- Remove 'reviewState' from 'details'
+					js := jsonb_set(js, '{details}', (js->'details')::jsonb - 'reviewState', true);
+
 					-- Merge the instanceId into the existing 'details' key in JSON
 					js := jsonb_set(js, '{details}', (js->'details') || result_data, true);
 
