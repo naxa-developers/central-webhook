@@ -6,6 +6,9 @@ Call a remote API on ODK Central database events:
 - Update entity (entity properties).
 - Submission review (approved, hasIssues, rejected).
 
+The `centralwebhook` binary is small ~15Mb and only consumes
+~5Mb of memory when running.
+
 ## Prerequisites
 
 - ODK Central running, connecting to an accessible Postgresql database.
@@ -17,25 +20,24 @@ Call a remote API on ODK Central database events:
 The `centralwebhook` tool is a service that runs continually, monitoring the
 ODK Central database for updates and triggering the webhook as appropriate.
 
-### Integrate Into ODK Central Stack
+### Integrate Into [ODK Central](https://github.com/getodk/central) Stack
 
 - It's possible to include this as part of the standard ODK Central docker
   compose stack.
 - First add the environment variables to your `.env` file:
 
-```dotenv
-CENTRAL_WEBHOOK_DB_URI=postgresql://user:pass@localhost:5432/db_name?sslmode=disable
-CENTRAL_WEBHOOK_UPDATE_ENTITY_URL=https://your.domain.com/some/webhook
-CENTRAL_WEBHOOK_REVIEW_SUBMISSION_URL=https://your.domain.com/some/webhook
-CENTRAL_WEBHOOK_NEW_SUBMISSION_URL=https://your.domain.com/some/webhook
-CENTRAL_WEBHOOK_API_KEY=ksdhfiushfiosehf98e3hrih39r8hy439rh389r3hy983y
-```
+    ```dotenv
+    CENTRAL_WEBHOOK_UPDATE_ENTITY_URL=https://your.domain.com/some/webhook
+    CENTRAL_WEBHOOK_REVIEW_SUBMISSION_URL=https://your.domain.com/some/webhook
+    CENTRAL_WEBHOOK_NEW_SUBMISSION_URL=https://your.domain.com/some/webhook
+    CENTRAL_WEBHOOK_API_KEY=your_api_key_key
+    ```
 
-> [!TIP]
-> Omit a xxx_URL variable if you do not wish to use that particular webhook.
->
-> The CENTRAL_WEBHOOK_API_KEY variable is also optional, see
-> [#apis-with-authentication]
+    > [!TIP]
+    > Omit a xxx_URL variable if you do not wish to use that particular webhook.
+    >
+    > The CENTRAL_WEBHOOK_API_KEY variable is also optional, see the
+    > [APIs With Authentication](#apis-with-authentication) section.
 
 - Then extend the docker compose configuration at startup:
 
@@ -90,7 +92,6 @@ Then run with:
     -reviewSubmissionUrl 'https://your.domain.com/some/webhook'
 ```
 
-> [!TIP]
 > It's possible to specify a single webhook event, or multiple.
 
 </details>
@@ -136,7 +137,6 @@ if err != nil {
 }
 ```
 
-> [!NOTE]
 > To not provide a webhook for an event, pass `nil` as the url.
 
 </details>
