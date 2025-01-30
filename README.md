@@ -33,18 +33,18 @@ ODK Central database for updates and triggering the webhook as appropriate.
     CENTRAL_WEBHOOK_API_KEY=your_api_key_key
     ```
 
-    > [!TIP]
-    > Omit a xxx_URL variable if you do not wish to use that particular webhook.
-    >
-    > The CENTRAL_WEBHOOK_API_KEY variable is also optional, see the
-    > [APIs With Authentication](#apis-with-authentication) section.
+> [!TIP]
+> Omit a xxx_URL variable if you do not wish to use that particular webhook.
+>
+> The CENTRAL_WEBHOOK_API_KEY variable is also optional, see the
+> [APIs With Authentication](#apis-with-authentication) section.
 
 - Then extend the docker compose configuration at startup:
 
-```bash
-# Starting from the getodk/central code repo
-docker compose -f docker-compose.yml -f /path/to/this/repo/compose.webhook.yml up -d
-```
+    ```bash
+    # Starting from the getodk/central code repo
+    docker compose -f docker-compose.yml -f /path/to/this/repo/compose.webhook.yml up -d
+    ```
 
 ### Other Ways To Run
 
