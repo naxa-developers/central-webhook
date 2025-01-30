@@ -6,8 +6,8 @@ Call a remote API on ODK Central database events:
 - Update entity (entity properties).
 - Submission review (approved, hasIssues, rejected).
 
-The `centralwebhook` binary is small ~15Mb and only consumes
-~5Mb of memory when running.
+The `centralwebhook` binary is small ~15MB and only consumes
+~5MB of memory when running.
 
 ## Prerequisites
 
