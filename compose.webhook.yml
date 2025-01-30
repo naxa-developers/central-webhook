@@ -1,0 +1,18 @@
+# This file is for extending the docker-compose.yml file in the getodk/central repo.
+# From the getodk/central repo:
+#   docker compose -f docker-compose.yml -f /path/to/this/repo/compose.webhook.yml up -d
+
+services:
+  webhook:
+    image: "ghcr.io/hotosm/central-webhook:0.1.0-rc"
+    environment:
+      CENTRAL_WEBHOOK_DB_URI: postgresql://odk:odk@postgres14:5434/odk?sslmode=disable
+      CENTRAL_WEBHOOK_UPDATE_ENTITY_URL: ${CENTRAL_WEBHOOK_UPDATE_ENTITY_URL}
+      CENTRAL_WEBHOOK_REVIEW_SUBMISSION_URL: ${CENTRAL_WEBHOOK_REVIEW_SUBMISSION_URL}
+      CENTRAL_WEBHOOK_NEW_SUBMISSION_URL: ${CENTRAL_WEBHOOK_NEW_SUBMISSION_URL}
+      CENTRAL_WEBHOOK_API_KEY: ${CENTRAL_WEBHOOK_API_KEY}
+      CENTRAL_WEBHOOK_LOG_LEVEL: ${CENTRAL_WEBHOOK_LOG_LEVEL:-DEBUG}
+    depends_on:
+      postgres14:
+        condition: service_healthy
+    restart: always
