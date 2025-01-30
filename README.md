@@ -141,7 +141,7 @@ if err != nil {
 
 </details>
 
-## Request Payload Examples
+## Webhook Request Payload Examples
 
 ### Entity Update (updateEntityUrl)
 
@@ -258,4 +258,21 @@ async def update_entity_status_in_fmtm(
         msg = f"Webhook was called for an unsupported event type ({odk_event.type.value})"
         log.warning(msg)
         raise HTTPException(status_code=400, detail=msg)
+```
+
+## Development
+
+- This package mostly uses the standard library, plus a Postgres driver
+and testing framework.
+- Binary and container image distribution is automated on new **release**.
+
+### Run The Tests
+
+The test suite depends on a database, so the most convenient way is to run
+via docker.
+
+There is a pre-configured `compose.yml` for testing:
+
+```bash
+docker compose run --rm webhook
 ```
