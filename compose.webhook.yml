@@ -6,13 +6,13 @@ services:
   webhook:
     image: "ghcr.io/hotosm/central-webhook:0.1.0-rc"
     environment:
-      CENTRAL_WEBHOOK_DB_URI: postgresql://odk:odk@postgres14:5434/odk?sslmode=disable
+      CENTRAL_WEBHOOK_DB_URI: postgresql://odk:odk@postgres14:5432/odk?sslmode=disable
       CENTRAL_WEBHOOK_UPDATE_ENTITY_URL: ${CENTRAL_WEBHOOK_UPDATE_ENTITY_URL}
       CENTRAL_WEBHOOK_REVIEW_SUBMISSION_URL: ${CENTRAL_WEBHOOK_REVIEW_SUBMISSION_URL}
       CENTRAL_WEBHOOK_NEW_SUBMISSION_URL: ${CENTRAL_WEBHOOK_NEW_SUBMISSION_URL}
       CENTRAL_WEBHOOK_API_KEY: ${CENTRAL_WEBHOOK_API_KEY}
-      CENTRAL_WEBHOOK_LOG_LEVEL: ${CENTRAL_WEBHOOK_LOG_LEVEL:-DEBUG}
+      CENTRAL_WEBHOOK_LOG_LEVEL: ${CENTRAL_WEBHOOK_LOG_LEVEL:-INFO}
     depends_on:
       postgres14:
-        condition: service_healthy
+        condition: service_started
     restart: always
