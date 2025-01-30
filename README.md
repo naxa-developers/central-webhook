@@ -17,25 +17,39 @@ Call a remote API on ODK Central database events:
 The `centralwebhook` tool is a service that runs continually, monitoring the
 ODK Central database for updates and triggering the webhook as appropriate.
 
-### Via Binary
+### Integrate Into ODK Central Stack
 
-Download the binary for your platform from the
-[releases](https://github.com/hotosm/central-webhook/releases) page.
+- It's possible to include this as part of the standard ODK Central docker
+  compose stack.
+- First add the environment variables to your `.env` file:
 
-Then run with:
-
-```bash
-./centralwebhook \
-    -db 'postgresql://{user}:{password}@{hostname}/{db}?sslmode=disable' \
-    -updateEntityUrl 'https://your.domain.com/some/webhook' \
-    -newSubmissionUrl 'https://your.domain.com/some/webhook' \
-    -reviewSubmissionUrl 'https://your.domain.com/some/webhook'
+```dotenv
+CENTRAL_WEBHOOK_DB_URI=postgresql://user:pass@localhost:5432/db_name?sslmode=disable
+CENTRAL_WEBHOOK_UPDATE_ENTITY_URL=https://your.domain.com/some/webhook
+CENTRAL_WEBHOOK_REVIEW_SUBMISSION_URL=https://your.domain.com/some/webhook
+CENTRAL_WEBHOOK_NEW_SUBMISSION_URL=https://your.domain.com/some/webhook
+CENTRAL_WEBHOOK_API_KEY=ksdhfiushfiosehf98e3hrih39r8hy439rh389r3hy983y
 ```
 
 > [!TIP]
-> It's possible to specify a single webhook event, or multiple.
+> Omit a xxx_URL variable if you do not wish to use that particular webhook.
+>
+> The CENTRAL_WEBHOOK_API_KEY variable is also optional, see
+> [#apis-with-authentication]
 
-### Via Docker
+- Then extend the docker compose configuration at startup:
+
+```bash
+# Starting from the getodk/central code repo
+docker compose -f docker-compose.yml -f /path/to/this/repo/compose.webhook.yml up -d
+```
+
+### Other Ways To Run
+
+<details>
+<summary>Via Docker (Standalone)</summary>
+
+#### Via Docker (Standalone)
 
 ```bash
 docker run -d ghcr.io/hotosm/central-webhook:latest \
@@ -56,10 +70,35 @@ CENTRAL_WEBHOOK_API_KEY=ksdhfiushfiosehf98e3hrih39r8hy439rh389r3hy983y
 CENTRAL_WEBHOOK_LOG_LEVEL=DEBUG
 ```
 
-> [!NOTE]
-> Alternatively, add the service to your docker compose stack.
+</details>
 
-### Via Code
+<details>
+<summary>Via Binary (Standalone)</summary>
+
+#### Via Binary (Standalone)
+
+Download the binary for your platform from the
+[releases](https://github.com/hotosm/central-webhook/releases) page.
+
+Then run with:
+
+```bash
+./centralwebhook \
+    -db 'postgresql://{user}:{password}@{hostname}/{db}?sslmode=disable' \
+    -updateEntityUrl 'https://your.domain.com/some/webhook' \
+    -newSubmissionUrl 'https://your.domain.com/some/webhook' \
+    -reviewSubmissionUrl 'https://your.domain.com/some/webhook'
+```
+
+> [!TIP]
+> It's possible to specify a single webhook event, or multiple.
+
+</details>
+
+<details>
+<summary>Via Code</summary>
+
+#### Via Code
 
 Usage via the code / API:
 
@@ -98,8 +137,9 @@ if err != nil {
 ```
 
 > [!NOTE]
-> To not provide a webhook for either entities or submissions,
-> pass `nil` instead.
+> To not provide a webhook for an event, pass `nil` as the url.
+
+</details>
 
 ## Request Payload Examples
 
