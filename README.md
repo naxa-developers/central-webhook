@@ -1,5 +1,22 @@
 # Central Webhook
 
+<!-- markdownlint-disable -->
+<p align="center">
+  <em>A lightweight webhook for ODK Central submissions and entity property updates.</em>
+</p>
+<p align="center">
+  <a href="https://github.com/hotosm/central-webhook/actions/workflows/release.yml" target="_blank">
+      <img src="https://github.com/hotosm/central-webhook/actions/workflows/release.yml/badge.svg" alt="Build & Release">
+  </a>
+  <a href="https://github.com/hotosm/central-webhook/actions/workflows/test.yml" target="_blank">
+      <img src="https://github.com/hotosm/central-webhook/actions/workflows/test.yml/badge.svg" alt="Test">
+  </a>
+</p>
+
+---
+
+<!-- markdownlint-enable -->
+
 Call a remote API on ODK Central database events:
 
 - New submission (XML).
