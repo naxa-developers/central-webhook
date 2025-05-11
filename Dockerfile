@@ -1,4 +1,4 @@
-FROM golang:1.23 AS base
+FROM golang:1.24 AS base
 
 
 # Build statically compiled binary
