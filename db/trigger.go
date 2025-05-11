@@ -78,9 +78,14 @@ func CreateTrigger(ctx context.Context, dbPool *pgxpool.Pool, tableName string) 
 					-- Merge the instanceId into the existing 'details' key in JSON
 					js := jsonb_set(js, '{details}', (js->'details') || result_data, true);
 
+					-- Truncate if payload is too large: https://github.com/hotosm/central-webhook/issues/8
+					IF length(js::text) > 8000 THEN
+						js := jsonb_set(js, '{truncated}', 'true'::jsonb);
+						js := jsonb_set(js, '{data}', 'Payload too large. Truncated.'::jsonb, true);
+					END IF;
+
 					-- Notify the odk-events queue
-					-- Skip if payload is too large: https://github.com/hotosm/central-webhook/issues/8
-					IF length(js::text) <= 8000 THEN PERFORM pg_notify('odk-events', js::text); END IF;
+					PERFORM pg_notify('odk-events', js::text);
 
 				ELSE
 					-- Skip pg_notify for unsupported actions & insert as normal

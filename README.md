@@ -26,6 +26,13 @@ Call a remote API on ODK Central database events:
 The `centralwebhook` binary is small ~15MB and only consumes
 ~5MB of memory when running.
 
+> [!NOTE]
+> There is a 8000 byte Postgres limit for the submission XML that can be sent
+> until [this issue](https://github.com/hotosm/central-webhook/issues/9)
+> is addressed.
+>
+> The submission XML will simply be truncated in this case.
+
 ## Prerequisites
 
 - ODK Central running, connecting to an accessible Postgresql database.
