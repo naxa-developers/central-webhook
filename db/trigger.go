@@ -79,7 +79,8 @@ func CreateTrigger(ctx context.Context, dbPool *pgxpool.Pool, tableName string) 
 					js := jsonb_set(js, '{details}', (js->'details') || result_data, true);
 
 					-- Notify the odk-events queue
-					PERFORM pg_notify('odk-events', js::text);
+					-- Skip if payload is too large: https://github.com/hotosm/central-webhook/issues/8
+					IF length(js::text) <= 8000 THEN PERFORM pg_notify('odk-events', js::text); END IF;
 
 				ELSE
 					-- Skip pg_notify for unsupported actions & insert as normal
