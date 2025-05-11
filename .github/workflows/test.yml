@@ -10,7 +10,7 @@ on:
   workflow_dispatch:
 
 jobs:
-  pytest:
+  tests:
     uses: hotosm/gh-workflows/.github/workflows/test_compose.yml@2.0.5
     with:
       image_name: ghcr.io/${{ github.repository }}
