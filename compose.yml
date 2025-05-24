@@ -25,6 +25,8 @@ services:
     depends_on:
       db:
         condition: service_healthy
+      # central:
+        # condition: service_completed_successfully
     networks:
       - net
     # This allows usage of services running directly on the host machine
@@ -51,3 +53,47 @@ services:
       interval: 10s
       timeout: 5s
       retries: 3
+
+  # # Run ODK Central migrations to initialise the database schema
+  # # This makes things more complex due to foreign key requirements,
+  # # but is probably more correct - swap to this in future
+  # central:
+  #   image: ghcr.io/getodk/central-service:v2025.1.1
+  #   container_name: centralwebhook-central
+  #   depends_on:
+  #     db:
+  #       condition: service_healthy
+  #   environment:
+  #     # Vars required to start, but not used
+  #     - DOMAIN=localhost
+  #     - SSL_TYPE=upstream
+  #     - SYSADMIN_EMAIL=test@test.org
+  #     - HTTPS_PORT=${HTTPS_PORT:-443}
+  #     - DB_HOST=db
+  #     - DB_USER=odk
+  #     - DB_PASSWORD=odk
+  #     - DB_NAME=odk
+  #     - DB_SSL=null
+  #     - EMAIL_FROM=test@test.org
+  #     - EMAIL_HOST=mail
+  #     - EMAIL_PORT=25
+  #     - EMAIL_SECURE=false
+  #     - EMAIL_IGNORE_TLS=true
+  #     - EMAIL_USER=test@test.org
+  #     - EMAIL_PASSWORD=password
+  #     - OIDC_ENABLED=false
+  #     - OIDC_ISSUER_URL=https://oidc.com
+  #     - OIDC_CLIENT_ID=xxx
+  #     - OIDC_CLIENT_SECRET=xxx
+  #     - SENTRY_ORG_SUBDOMAIN=o130137
+  #     - SENTRY_KEY=3cf75f54983e473da6bd07daddf0d2ee
+  #     - SENTRY_PROJECT=1298632
+  #     - SENTRY_TRACE_RATE=1000
+  #     - S3_SERVER=http://s3.amazonaws.com
+  #     - S3_BUCKET_NAME=a-bucket
+  #     - S3_ACCESS_KEY=xxx
+  #     - S3_SECRET_KEY=xxx
+  #   networks:
+  #     - net
+  #   restart: "on-failure:2"
+  #   command: [ "sh", "-c", "wait-for-it db:5432 -- ./start-odk.sh & sleep 7 && echo 'Exiting cleanly after 7s' && exit 0" ]
