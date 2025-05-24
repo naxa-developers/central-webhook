@@ -6,9 +6,11 @@ import (
 	"log/slog"
 	"os"
 	"sync"
+	"strings"
 	"testing"
 	"time"
 
+	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/matryer/is"
 )
 
@@ -17,6 +19,38 @@ import (
 //
 // The easiest way to ensure this is to run the tests with docker compose:
 // docker compose run --rm webhook
+
+func createAuditTestsTable(ctx context.Context, conn *pgxpool.Conn, is *is.I) {
+	_, err := conn.Exec(ctx, `DROP TABLE IF EXISTS audits_test CASCADE;`)
+	is.NoErr(err)
+	auditTableCreateSql := `
+		CREATE TABLE audits_test (
+			"actorId" int,
+			action varchar,
+			details jsonb
+		);
+	`
+	_, err = conn.Exec(ctx, auditTableCreateSql)
+	is.NoErr(err)
+}
+
+func createSubmissionDefsTable(ctx context.Context, conn *pgxpool.Conn, is *is.I) {
+	_, err := conn.Exec(ctx, `DROP TABLE IF EXISTS submission_defs CASCADE;`)
+	is.NoErr(err)
+	submissionTableCreateSql := `
+		CREATE TABLE submission_defs (
+			id int4,
+			"submissionId" int4,
+			"instanceId" uuid,
+			xml text,
+			"formDefId" int4,
+			"submitterId" int4,
+			"createdAt" timestamptz
+		);
+	`
+	_, err = conn.Exec(ctx, submissionTableCreateSql)
+	is.NoErr(err)
+}
 
 func TestEntityTrigger(t *testing.T) {
 	dbUri := os.Getenv("CENTRAL_WEBHOOK_DB_URI")
@@ -39,7 +73,7 @@ func TestEntityTrigger(t *testing.T) {
 	defer conn.Release()
 
 	// Create entity_defs table
-	_, err = conn.Exec(ctx, `DROP TABLE IF EXISTS entity_defs;`)
+	_, err = conn.Exec(ctx, `DROP TABLE IF EXISTS entity_defs CASCADE;`)
 	is.NoErr(err)
 	entityTableCreateSql := `
 		CREATE TABLE entity_defs (
@@ -56,17 +90,7 @@ func TestEntityTrigger(t *testing.T) {
 	is.NoErr(err)
 
 	// Create audits_test table
-	_, err = conn.Exec(ctx, `DROP TABLE IF EXISTS audits_test;`)
-	is.NoErr(err)
-	auditTableCreateSql := `
-		CREATE TABLE audits_test (
-			"actorId" int,
-			action varchar,
-			details jsonb
-		);
-	`
-	_, err = conn.Exec(ctx, auditTableCreateSql)
-	is.NoErr(err)
+	createAuditTestsTable(ctx, conn, is)
 
 	// Insert an entity record
 	entityInsertSql := `
@@ -150,8 +174,7 @@ func TestEntityTrigger(t *testing.T) {
 	is.Equal(data["status"], "0") // Ensure `status` has the correct value
 
 	// Cleanup
-	conn.Exec(ctx, `DROP TABLE IF EXISTS audits_test;`)
-	conn.Exec(ctx, `DROP TABLE IF EXISTS entity_defs;`)
+	conn.Exec(ctx, `DROP TABLE IF EXISTS submission_defs, audits_test CASCADE;`)
 	cancel()
 	sub.Unlisten(ctx) // uses background ctx anyway
 	listener.Close(ctx)
@@ -180,33 +203,10 @@ func TestNewSubmissionTrigger(t *testing.T) {
 	defer conn.Release()
 
 	// Create submission_defs table
-	_, err = conn.Exec(ctx, `DROP TABLE IF EXISTS submission_defs;`)
-	is.NoErr(err)
-	submissionTableCreateSql := `
-		CREATE TABLE submission_defs (
-			id int4,
-			"submissionId" int4,
-			xml text,
-			"formDefId" int4,
-			"submitterId" int4,
-			"createdAt" timestamptz
-		);
-	`
-	_, err = conn.Exec(ctx, submissionTableCreateSql)
-	is.NoErr(err)
+	createSubmissionDefsTable(ctx, conn, is)
 
 	// Create audits_test table
-	_, err = conn.Exec(ctx, `DROP TABLE IF EXISTS audits_test;`)
-	is.NoErr(err)
-	auditTableCreateSql := `
-		CREATE TABLE audits_test (
-			"actorId" int,
-			action varchar,
-			details jsonb
-		);
-	`
-	_, err = conn.Exec(ctx, auditTableCreateSql)
-	is.NoErr(err)
+	createAuditTestsTable(ctx, conn, is)
 
 	// Insert an submission record
 	submissionInsertSql := `
@@ -293,8 +293,116 @@ func TestNewSubmissionTrigger(t *testing.T) {
 	is.Equal(data["xml"], `<data id="xxx">`) // Ensure `xml` has the correct value
 
 	// Cleanup
-	conn.Exec(ctx, `DROP TABLE IF EXISTS submission_defs;`)
-	conn.Exec(ctx, `DROP TABLE IF EXISTS audits_test;`)
+	conn.Exec(ctx, `DROP TABLE IF EXISTS submission_defs, audits_test CASCADE;`)
+	cancel()
+	sub.Unlisten(ctx) // uses background ctx anyway
+	listener.Close(ctx)
+	wg.Wait()
+}
+
+// Test submission truncation works correctly
+func TestNewSubmissionTrigger_TruncatesLargePayload(t *testing.T) {
+	dbUri := os.Getenv("CENTRAL_WEBHOOK_DB_URI")
+	if len(dbUri) == 0 {
+		// Default
+		dbUri = "postgresql://odk:odk@db:5432/odk?sslmode=disable"
+	}
+
+	is := is.New(t)
+	log := slog.New(slog.NewJSONHandler(os.Stdout, nil))
+	ctx := context.Background()
+	ctx, cancel := context.WithCancel(ctx)
+	wg := sync.WaitGroup{}
+	pool, err := InitPool(ctx, log, dbUri)
+	is.NoErr(err)
+
+	conn, err := pool.Acquire(ctx)
+	is.NoErr(err)
+	defer conn.Release()
+
+	// Create submission_defs table
+	createSubmissionDefsTable(ctx, conn, is)
+
+	// Create audits_test table
+	createAuditTestsTable(ctx, conn, is)
+
+	// Insert submission with large XML
+	largeXml := "<data id='big'>" + strings.Repeat("x", 9000) + "</data>"
+	submissionInsertSql := `
+		INSERT INTO submission_defs (
+			id,
+			"submissionId",
+			xml,
+			"formDefId",
+			"submitterId",
+			"createdAt"
+		) VALUES (
+		 	1,
+            2,
+			$1,
+			7,
+			5,
+			'2025-01-10 16:23:40.073'
+		);
+	`
+	_, err = conn.Exec(ctx, submissionInsertSql, largeXml)
+	is.NoErr(err)
+
+	// Create audit trigger
+	err = CreateTrigger(ctx, pool, "audits_test")
+	is.NoErr(err)
+
+	// Create listener
+	listener := NewListener(pool)
+	err = listener.Connect(ctx)
+	is.NoErr(err)
+
+	// Create notifier
+	n := NewNotifier(log, listener)
+	wg.Add(1)
+	go func() {
+		n.Run(ctx)
+		wg.Done()
+	}()
+	sub := n.Listen("odk-events")
+
+	// Insert an audit record
+	auditInsertSql := `
+		INSERT INTO audits_test ("actorId", action, details)
+		VALUES (5, 'submission.create', '{"submissionDefId": 1}');
+	`
+	_, err = conn.Exec(ctx, auditInsertSql)
+	is.NoErr(err)
+
+	// Validate the notification content
+	wg.Add(1)
+	out := make(chan string)
+	go func() {
+		<-sub.EstablishedC()
+		msg := <-sub.NotificationC() // Get the notification
+
+		log.Info("notification received", "raw", msg)
+
+		out <- string(msg) // Send it to the output channel
+		close(out)
+		wg.Done()
+	}()
+
+	// Process the notification
+	var notification map[string]interface{}
+	for msg := range out {
+		err := json.Unmarshal([]byte(msg), &notification)
+		is.NoErr(err) // Ensure the JSON payload is valid
+		log.Info("parsed notification", "notification", notification)
+	}
+
+	// Assert truncation
+	is.Equal(notification["truncated"], true)
+	is.Equal(notification["data"], "Payload too large. Truncated.")
+	is.Equal(notification["action"], "submission.create")
+
+	// Cleanup
+	conn.Exec(ctx, `DROP TABLE IF EXISTS submission_defs, audits_test CASCADE;`)
 	cancel()
 	sub.Unlisten(ctx) // uses background ctx anyway
 	listener.Close(ctx)
@@ -323,30 +431,10 @@ func TestReviewSubmissionTrigger(t *testing.T) {
 	defer conn.Release()
 
 	// Create submission_defs table
-	_, err = conn.Exec(ctx, `DROP TABLE IF EXISTS submission_defs;`)
-	is.NoErr(err)
-	submissionTableCreateSql := `
-		CREATE TABLE submission_defs (
-			id int4,
-			"submissionId" int4,
-			"instanceId" uuid
-		);
-	`
-	_, err = conn.Exec(ctx, submissionTableCreateSql)
-	is.NoErr(err)
+	createSubmissionDefsTable(ctx, conn, is)
 
 	// Create audits_test table
-	_, err = conn.Exec(ctx, `DROP TABLE IF EXISTS audits_test;`)
-	is.NoErr(err)
-	auditTableCreateSql := `
-		CREATE TABLE audits_test (
-			"actorId" int,
-			action varchar,
-			details jsonb
-		);
-	`
-	_, err = conn.Exec(ctx, auditTableCreateSql)
-	is.NoErr(err)
+	createAuditTestsTable(ctx, conn, is)
 
 	// Insert an submission record
 	submissionInsertSql := `
@@ -429,8 +517,7 @@ func TestReviewSubmissionTrigger(t *testing.T) {
 	is.Equal(data["reviewState"], "approved") // Ensure reviewState has the correct value
 
 	// Cleanup
-	conn.Exec(ctx, `DROP TABLE IF EXISTS submission_defs;`)
-	conn.Exec(ctx, `DROP TABLE IF EXISTS audits_test;`)
+	conn.Exec(ctx, `DROP TABLE IF EXISTS submission_defs, audits_test CASCADE;`)
 	cancel()
 	sub.Unlisten(ctx) // uses background ctx anyway
 	listener.Close(ctx)
@@ -458,17 +545,7 @@ func TestNoTrigger(t *testing.T) {
 	defer conn.Release()
 
 	// Create audits_test table
-	_, err = conn.Exec(ctx, `DROP TABLE IF EXISTS audits_test;`)
-	is.NoErr(err)
-	auditTableCreateSql := `
-		CREATE TABLE audits_test (
-			"actorId" int,
-			action varchar,
-			details jsonb
-		);
-	`
-	_, err = conn.Exec(ctx, auditTableCreateSql)
-	is.NoErr(err)
+	createAuditTestsTable(ctx, conn, is)
 
 	// Create audit trigger
 	err = CreateTrigger(ctx, pool, "audits_test")
@@ -517,7 +594,7 @@ func TestNoTrigger(t *testing.T) {
 	}
 
 	// Cleanup
-	conn.Exec(ctx, `DROP TABLE IF EXISTS audits_test;`)
+	conn.Exec(ctx, `DROP TABLE IF EXISTS submission_defs, audits_test CASCADE;`)
 	cancel()
 	sub.Unlisten(ctx) // uses background ctx anyway
 	listener.Close(ctx)

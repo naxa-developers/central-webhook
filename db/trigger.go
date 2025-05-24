@@ -51,8 +51,8 @@ func CreateTrigger(ctx context.Context, dbPool *pgxpool.Pool, tableName string) 
 					-- Truncate if payload is too large: https://github.com/hotosm/central-webhook/issues/8
 					IF length(js::text) > 8000 THEN
 						RAISE NOTICE 'Payload too large, truncating: %', left(js::text, 500) || '...';
-						js := jsonb_set(js, '{truncated}', 'true'::jsonb);
-						js := jsonb_set(js, '{data}', 'Payload too large. Truncated.'::jsonb, true);
+						js := jsonb_set(js, '{truncated}', 'true'::jsonb, true);
+						js := jsonb_set(js, '{data}', '"Payload too large. Truncated."'::jsonb, true);
 					END IF;
 
 					-- Notify the odk-events queue
@@ -70,8 +70,8 @@ func CreateTrigger(ctx context.Context, dbPool *pgxpool.Pool, tableName string) 
 					-- Truncate if payload is too large: https://github.com/hotosm/central-webhook/issues/8
 					IF length(js::text) > 8000 THEN
 						RAISE NOTICE 'Payload too large, truncating: %', left(js::text, 500) || '...';
-						js := jsonb_set(js, '{truncated}', 'true'::jsonb);
-						js := jsonb_set(js, '{data}', 'Payload too large. Truncated.'::jsonb, true);
+						js := jsonb_set(js, '{truncated}', 'true'::jsonb, true);
+						js := jsonb_set(js, '{data}', '"Payload too large. Truncated."'::jsonb, true);
 					END IF;
 
 					-- Notify the odk-events queue
@@ -95,8 +95,8 @@ func CreateTrigger(ctx context.Context, dbPool *pgxpool.Pool, tableName string) 
 					-- Truncate if payload is too large: https://github.com/hotosm/central-webhook/issues/8
 					IF length(js::text) > 8000 THEN
 						RAISE NOTICE 'Payload too large, truncating: %', left(js::text, 500) || '...';
-						js := jsonb_set(js, '{truncated}', 'true'::jsonb);
-						js := jsonb_set(js, '{data}', 'Payload too large. Truncated.'::jsonb, true);
+						js := jsonb_set(js, '{truncated}', 'true'::jsonb, true);
+						js := jsonb_set(js, '{data}', '"Payload too large. Truncated."'::jsonb, true);
 					END IF;
 
 					-- Notify the odk-events queue
