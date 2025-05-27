@@ -58,57 +58,44 @@ func CreateTrigger(ctx context.Context, dbPool *pgxpool.Pool, tableName string) 
 					-- Notify the odk-events queue
 					PERFORM pg_notify('odk-events', js::text);
 
-				WHEN 'submission.create' THEN
-					SELECT jsonb_build_object('xml', submission_defs.xml)
-					INTO result_data
-					FROM submission_defs
-					WHERE submission_defs.id = (NEW.details->>'submissionDefId')::int;
+        WHEN 'submission.create' THEN
+            SELECT jsonb_build_object('xml', submission_defs.xml)
+            INTO result_data
+            FROM submission_defs
+            WHERE submission_defs.id = (NEW.details->>'submissionDefId')::int;
 
-					-- Merge the submission XML into the JSON data key
-					js := jsonb_set(js, '{data}', result_data, true);
+        WHEN 'submission.update' THEN
+            SELECT jsonb_build_object('instanceId', submission_defs."instanceId")
+            INTO result_data
+            FROM submission_defs
+            WHERE submission_defs.id = (NEW.details->>'submissionDefId')::int;
 
-					-- Truncate if payload is too large: https://github.com/hotosm/central-webhook/issues/8
-					IF length(js::text) > 8000 THEN
-						RAISE NOTICE 'Payload too large, truncating: %', left(js::text, 500) || '...';
-						js := jsonb_set(js, '{truncated}', 'true'::jsonb, true);
-						js := jsonb_set(js, '{data}', '"Payload too large. Truncated."'::jsonb, true);
-					END IF;
+            -- Extract 'reviewState' from 'details' and set it in 'data'
+            js := jsonb_set(js, '{data}', jsonb_build_object('reviewState', js->'details'->>'reviewState'), true);
 
-					-- Notify the odk-events queue
-					PERFORM pg_notify('odk-events', js::text);
-
-				WHEN 'submission.update' THEN
-					SELECT jsonb_build_object('instanceId', submission_defs."instanceId")
-					INTO result_data
-					FROM submission_defs
-					WHERE submission_defs.id = (NEW.details->>'submissionDefId')::int;
-
-					-- Extract 'reviewState' from 'details' and set it in 'data'
-					js := jsonb_set(js, '{data}', jsonb_build_object('reviewState', js->'details'->>'reviewState'), true);
-
-					-- Remove 'reviewState' from 'details'
-					js := jsonb_set(js, '{details}', (js->'details')::jsonb - 'reviewState', true);
+            -- Remove 'reviewState' from 'details'
+            js := jsonb_set(js, '{details}', (js->'details')::jsonb - 'reviewState', true);
 
 					-- Merge the instanceId into the existing 'details' key in JSON
-					js := jsonb_set(js, '{details}', (js->'details') || result_data, true);
+            js := jsonb_set(js, '{details}', (js->'details') || result_data, true);
 
 					-- Truncate if payload is too large: https://github.com/hotosm/central-webhook/issues/8
-					IF length(js::text) > 8000 THEN
-						RAISE NOTICE 'Payload too large, truncating: %', left(js::text, 500) || '...';
-						js := jsonb_set(js, '{truncated}', 'true'::jsonb, true);
-						js := jsonb_set(js, '{data}', '"Payload too large. Truncated."'::jsonb, true);
-					END IF;
+            IF length(js::text) > 8000 THEN
+                RAISE NOTICE 'Payload too large, truncating: %', left(js::text, 500) || '...';
+                js := jsonb_set(js, '{truncated}', 'true'::jsonb, true);
+                js := jsonb_set(js, '{data}', '"Payload too large. Truncated."'::jsonb, true);
+            END IF;
 
 					-- Notify the odk-events queue
 					PERFORM pg_notify('odk-events', js::text);
 
-				ELSE
+        ELSE
 					-- Skip pg_notify for unsupported actions & insert as normal
 					RETURN NEW;
-			END CASE;
+    END CASE;
 
 			RETURN NEW;
-		END;
+END;
 		$$ LANGUAGE 'plpgsql';
 	`
 
